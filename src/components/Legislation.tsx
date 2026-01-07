@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Scale, FileText, Download, Search, 
   Eye, Sparkles, Printer, ArrowLeft, Plus, X,
-  Loader2, Edit, Trash2, ExternalLink, Link2
+  Loader2, Edit, ExternalLink, Link2, FileSpreadsheet
 } from 'lucide-react';
 import { GeminiService } from '../services/gemini';
 import { useLegislation } from '@/hooks/useLegislation';
 import { usePartnerships } from '@/hooks/usePartnerships';
+import { exportToPDF } from '@/utils/exportUtils';
+import jsPDF from 'jspdf';
 
 const LegislationModule: React.FC = () => {
   const { legislation, loading, searchTerm, searchLegislation, createLegislation, updateLegislation } = useLegislation();
@@ -183,6 +185,79 @@ A prestação de contas deverá ser realizada eletronicamente através da plataf
     return 'bg-muted text-muted-foreground';
   };
 
+  const handlePrint = () => {
+    const content = aiContent || selectedDoc?.conteudo || '';
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${selectedDoc?.titulo || 'Documento'}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; }
+            h1 { color: #333; border-bottom: 2px solid #0ea5e9; padding-bottom: 10px; }
+            pre { white-space: pre-wrap; font-family: inherit; }
+            .header { margin-bottom: 30px; }
+            .meta { color: #666; font-size: 12px; margin-bottom: 20px; }
+            @media print { body { padding: 20px; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>${selectedDoc?.titulo || 'Documento'}</h1>
+            <p class="meta">${getTypeLabel(selectedDoc?.tipo || null)} • ${selectedDoc?.numero || 'Sem número'}</p>
+            <p class="meta">Impresso em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+          </div>
+          <pre>${content}</pre>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  const handleDownloadDOCX = () => {
+    const content = aiContent || selectedDoc?.conteudo || '';
+    const title = selectedDoc?.titulo || 'Documento';
+    
+    // Create a simple text file with .doc extension (compatible with Word)
+    const header = `${title}\n${'='.repeat(title.length)}\n\n${getTypeLabel(selectedDoc?.tipo || null)} • ${selectedDoc?.numero || 'Sem número'}\nData: ${new Date().toLocaleDateString('pt-BR')}\n\n${'─'.repeat(50)}\n\n`;
+    const fullContent = header + content;
+    
+    const blob = new Blob([fullContent], { type: 'application/msword' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${title.replace(/[^a-zA-Z0-9]/g, '_')}.doc`;
+    link.click();
+  };
+
+  const handleDownloadPDF = () => {
+    const content = aiContent || selectedDoc?.conteudo || '';
+    const title = selectedDoc?.titulo || 'Documento';
+    
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, 14, 20);
+    
+    // Subtitle
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${getTypeLabel(selectedDoc?.tipo || null)} • ${selectedDoc?.numero || 'Sem número'}`, 14, 28);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 34);
+    
+    // Content
+    doc.setFontSize(11);
+    const splitText = doc.splitTextToSize(content, 180);
+    doc.text(splitText, 14, 45);
+    
+    doc.save(`${title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -202,11 +277,25 @@ A prestação de contas deverá ser realizada eletronicamente através da plataf
             <ArrowLeft size={16} /> Voltar para Biblioteca
           </button>
           <div className="flex gap-3">
-            <button className="p-3 bg-card border border-border text-muted-foreground rounded-xl hover:text-primary transition-all">
+            <button 
+              onClick={handlePrint}
+              className="p-3 bg-card border border-border text-muted-foreground rounded-xl hover:text-primary hover:bg-muted transition-all"
+              title="Imprimir documento"
+            >
               <Printer size={18} />
             </button>
-            <button className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase shadow-xl flex items-center gap-2">
-              <Download size={16} /> Baixar .DOCX
+            <button 
+              onClick={handleDownloadPDF}
+              className="p-3 bg-card border border-border text-muted-foreground rounded-xl hover:text-primary hover:bg-muted transition-all"
+              title="Baixar PDF"
+            >
+              <FileText size={18} />
+            </button>
+            <button 
+              onClick={handleDownloadDOCX}
+              className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase shadow-xl flex items-center gap-2 hover:opacity-90 transition-all"
+            >
+              <Download size={16} /> Baixar .DOC
             </button>
           </div>
         </header>
