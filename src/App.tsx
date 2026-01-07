@@ -180,8 +180,8 @@ const App: React.FC = () => {
             <Route path="/amendments" element={canAccess('/amendments') ? <AmendmentsModule /> : <AccessDenied />} />
             <Route path="/pmis" element={canAccess('/pmis') ? <PMISModule /> : <AccessDenied />} />
             <Route path="/chamamento" element={canAccess('/chamamento') ? <ChamamentoModule /> : <AccessDenied />} />
-            <Route path="/partnerships/*" element={canAccess('/partnerships') ? <PartnershipsModule user={currentUser} /> : <AccessDenied />} />
-            <Route path="/accountability" element={canAccess('/accountability') ? <AccountabilityModule user={currentUser} /> : <AccessDenied />} />
+            <Route path="/partnerships/*" element={canAccess('/partnerships') ? <PartnershipsModule /> : <AccessDenied />} />
+            <Route path="/accountability" element={canAccess('/accountability') ? <AccountabilityModule /> : <AccessDenied />} />
             <Route path="/oscs" element={canAccess('/oscs') ? <OSCModule /> : <AccessDenied />} />
             <Route path="/reports" element={canAccess('/reports') ? <ReportsModule /> : <AccessDenied />} />
             <Route path="/legislation" element={canAccess('/legislation') ? <LegislationModule /> : <AccessDenied />} />
