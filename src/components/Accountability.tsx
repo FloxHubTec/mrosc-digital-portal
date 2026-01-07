@@ -101,7 +101,7 @@ const AccountabilityModule: React.FC<AccountabilityProps> = ({ user }) => {
                           <button className="p-3 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive hover:text-destructive-foreground transition-all" title="Glosar Despesa">
                             <XCircle size={18} />
                           </button>
-                          <button className="p-3 bg-success/10 text-success rounded-xl hover:bg-success hover:text-white transition-all">
+                          <button className="p-3 bg-success/10 text-success rounded-xl hover:bg-success hover:text-success-foreground transition-all">
                             <CheckCircle2 size={18} />
                           </button>
                        </div>

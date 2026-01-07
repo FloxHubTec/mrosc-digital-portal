@@ -205,19 +205,19 @@ A prestação de contas deverá ser realizada eletronicamente através da plataf
         ))}
       </div>
 
-      <div className="mt-20 bg-gradient-to-br from-info/90 to-primary/90 p-12 rounded-[4rem] text-white relative overflow-hidden shadow-2xl">
+      <div className="mt-20 bg-gradient-to-br from-info/90 to-primary/90 p-12 rounded-[4rem] text-primary-foreground relative overflow-hidden shadow-2xl">
          <div className="absolute top-0 right-0 p-12 opacity-10">
             <Sparkles size={200} />
          </div>
          <div className="relative z-10 max-w-2xl">
             <h3 className="text-3xl font-black mb-4 flex items-center gap-4">
-              <Sparkles className="text-white/70" />
+              <Sparkles className="text-primary-foreground/70" />
               IA Jurídica Unaí
             </h3>
-            <p className="text-white/70 font-medium leading-relaxed mb-10">
+            <p className="text-primary-foreground/70 font-medium leading-relaxed mb-10">
               Gere rascunhos de minutas juridicas personalizadas para cada OSC em segundos. O sistema utiliza IA para adaptar o objeto do plano de trabalho às cláusulas obrigatórias da Lei 13.019/14.
             </p>
-            <button className="px-10 py-6 bg-white text-primary rounded-[2rem] font-black text-[10px] uppercase tracking-widest shadow-xl hover:scale-105 transition-all">
+            <button className="px-10 py-6 bg-card text-primary rounded-[2rem] font-black text-[10px] uppercase tracking-widest shadow-xl hover:scale-105 transition-all">
               Acessar Assistente de Redação
             </button>
          </div>
