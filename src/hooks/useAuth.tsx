@@ -158,6 +158,12 @@ export function getRoleEnum(roleString: string | null): UserRole {
   if (!roleString) return UserRole.OSC_USER;
   
   const roleMap: Record<string, UserRole> = {
+    // Novos valores do banco de dados
+    'admin_master': UserRole.MASTER,
+    'gestor': UserRole.GESTOR,
+    'tecnico': UserRole.TECH_PHYSICAL,
+    'osc_user': UserRole.OSC_USER,
+    // Valores antigos (compatibilidade)
     'Administrador Master': UserRole.MASTER,
     'Controle Interno': UserRole.CONTROL,
     'Gestor da Parceria': UserRole.GESTOR,
