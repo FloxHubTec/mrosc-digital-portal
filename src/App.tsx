@@ -1,6 +1,6 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, Users, FileSignature, ShieldCheck, Eye, Bell, Search, Menu, X, ClipboardList, Megaphone, Briefcase, History, Lock, BookOpen, MessageSquare, Scale, BarChartHorizontal, UserCircle, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, FileSignature, ShieldCheck, Eye, Bell, Search, Menu, X, ClipboardList, Megaphone, Briefcase, History, Lock, BookOpen, MessageSquare, Scale, BarChartHorizontal, UserCircle, LogOut, Trophy, FilePlus2, HelpCircle, Link2 } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import PartnershipsModule from './components/Partnerships';
 import AmendmentsModule from './components/Amendments';
@@ -14,6 +14,10 @@ import LegislationModule from './components/Legislation';
 import CommunicationModule from './components/Communication';
 import ManualModule from './components/Manual';
 import ReportsModule from './components/Reports';
+import ProposalSelectionModule from './components/ProposalSelection';
+import AdditivesModule from './components/Additives';
+import SupportModule from './components/Support';
+import IntegrationsModule from './components/Integrations';
 import Auth from './pages/Auth';
 import { UserRole } from './types';
 import { AuthProvider, useAuth, getRoleEnum } from './hooks/useAuth';
@@ -111,7 +115,9 @@ const App: React.FC = () => {
           <SidebarItem to="/amendments" icon={FileText} label="Emendas Parlamentares" active={location.pathname === '/amendments'} hidden={!canAccess('/amendments')} />
           <SidebarItem to="/pmis" icon={Briefcase} label="PMIS" active={location.pathname === '/pmis'} hidden={!canAccess('/pmis')} />
           <SidebarItem to="/chamamento" icon={Megaphone} label="Chamamentos" active={location.pathname === '/chamamento'} hidden={!canAccess('/chamamento')} />
+          <SidebarItem to="/proposals" icon={Trophy} label="Seleção de Propostas" active={location.pathname === '/proposals'} hidden={!canAccess('/proposals')} />
           <SidebarItem to="/partnerships" icon={FileSignature} label="Parcerias" active={location.pathname.startsWith('/partnerships')} hidden={!canAccess('/partnerships')} />
+          <SidebarItem to="/additives" icon={FilePlus2} label="Aditivos" active={location.pathname === '/additives'} hidden={!canAccess('/additives')} />
           <SidebarItem to="/accountability" icon={ClipboardList} label="Contas (REO/REFF)" active={location.pathname === '/accountability'} hidden={!canAccess('/accountability')} />
         </nav>
 
@@ -126,6 +132,8 @@ const App: React.FC = () => {
         <div className="px-4 py-4 text-[10px] font-bold text-sidebar-primary uppercase tracking-widest mt-2 border-t border-sidebar-border pt-6">Controle e Ajuda</div>
         <nav className="px-4 space-y-1 mb-24">
           <SidebarItem to="/logs" icon={History} label="Audit Trail (LGPD)" active={location.pathname === '/logs'} hidden={!canAccess('/logs')} />
+          <SidebarItem to="/support" icon={HelpCircle} label="Suporte" active={location.pathname === '/support'} />
+          <SidebarItem to="/integrations" icon={Link2} label="Integrações" active={location.pathname === '/integrations'} hidden={!canAccess('/integrations')} />
           <SidebarItem to="/manual" icon={BookOpen} label="Manual do Sistema" active={location.pathname === '/manual'} />
           <SidebarItem to="/transparency" icon={Eye} label="Portal Público" active={false} />
         </nav>
@@ -180,13 +188,17 @@ const App: React.FC = () => {
             <Route path="/amendments" element={canAccess('/amendments') ? <AmendmentsModule /> : <AccessDenied />} />
             <Route path="/pmis" element={canAccess('/pmis') ? <PMISModule /> : <AccessDenied />} />
             <Route path="/chamamento" element={canAccess('/chamamento') ? <ChamamentoModule /> : <AccessDenied />} />
+            <Route path="/proposals" element={canAccess('/proposals') ? <ProposalSelectionModule /> : <AccessDenied />} />
             <Route path="/partnerships/*" element={canAccess('/partnerships') ? <PartnershipsModule /> : <AccessDenied />} />
+            <Route path="/additives" element={canAccess('/additives') ? <AdditivesModule /> : <AccessDenied />} />
             <Route path="/accountability" element={canAccess('/accountability') ? <AccountabilityModule /> : <AccessDenied />} />
             <Route path="/oscs" element={canAccess('/oscs') ? <OSCModule /> : <AccessDenied />} />
             <Route path="/reports" element={canAccess('/reports') ? <ReportsModule /> : <AccessDenied />} />
             <Route path="/legislation" element={canAccess('/legislation') ? <LegislationModule /> : <AccessDenied />} />
             <Route path="/communication" element={canAccess('/communication') ? <CommunicationModule /> : <AccessDenied />} />
             <Route path="/logs" element={canAccess('/logs') ? <AuditLogsModule /> : <AccessDenied />} />
+            <Route path="/support" element={<SupportModule />} />
+            <Route path="/integrations" element={canAccess('/integrations') ? <IntegrationsModule /> : <AccessDenied />} />
             <Route path="/manual" element={<ManualModule />} />
           </Routes>
         </div>
