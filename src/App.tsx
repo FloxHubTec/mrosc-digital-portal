@@ -1,7 +1,6 @@
-
-import React, { useState } from 'react';
-import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, Users, FileSignature, ShieldCheck, Eye, Bell, Search, Menu, X, ClipboardList, Megaphone, Briefcase, History, Lock, BookOpen, MessageSquare, Scale, BarChartHorizontal, UserCircle, RefreshCw } from 'lucide-react';
+import React from 'react';
+import { HashRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, FileText, Users, FileSignature, ShieldCheck, Eye, Bell, Search, Menu, X, ClipboardList, Megaphone, Briefcase, History, Lock, BookOpen, MessageSquare, Scale, BarChartHorizontal, UserCircle, LogOut } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import PartnershipsModule from './components/Partnerships';
 import AmendmentsModule from './components/Amendments';
@@ -15,8 +14,10 @@ import LegislationModule from './components/Legislation';
 import CommunicationModule from './components/Communication';
 import ManualModule from './components/Manual';
 import ReportsModule from './components/Reports';
+import Auth from './pages/Auth';
 import { UserRole } from './types';
-import { MOCK_USER, getAccessibleRoutes, User } from './services/authContext';
+import { AuthProvider, useAuth, getRoleEnum } from './hooks/useAuth';
+import { getAccessibleRoutes } from './services/authContext';
 
 const SidebarItem = ({ to, icon: Icon, label, active, hidden }: { to: string, icon: any, label: string, active: boolean, hidden?: boolean }) => {
   if (hidden) return null;
@@ -28,14 +29,67 @@ const SidebarItem = ({ to, icon: Icon, label, active, hidden }: { to: string, ic
   );
 };
 
+// Loading spinner component
+const LoadingSpinner = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+      <p className="text-muted-foreground font-medium">Carregando...</p>
+    </div>
+  </div>
+);
+
+// Protected route wrapper
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  
+  React.useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
+  
+  if (loading) return <LoadingSpinner />;
+  if (!user) return null;
+  
+  return <>{children}</>;
+};
+
 const App: React.FC = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [currentUser, setCurrentUser] = useState<User>(MOCK_USER);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+  const { user, profile, signOut, loading } = useAuth();
   const location = useLocation();
-  const routes = getAccessibleRoutes(currentUser.role);
+  const navigate = useNavigate();
+  
+  // Get role from profile or default
+  const currentRole = profile?.role ? getRoleEnum(profile.role) : UserRole.OSC_USER;
+  const routes = getAccessibleRoutes(currentRole);
   const canAccess = (path: string) => routes.includes('all') || routes.includes(path);
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
+
+  // Show loading while checking auth
+  if (loading) return <LoadingSpinner />;
+
+  // Public routes
   if (location.pathname === '/transparency') return <TransparencyPortal />;
+  if (location.pathname === '/auth') return <Auth />;
+
+  // Protected app
+  if (!user) {
+    navigate('/auth');
+    return null;
+  }
+
+  const currentUser = {
+    name: profile?.full_name || user.email?.split('@')[0] || 'Usuário',
+    role: currentRole,
+    department: profile?.department || undefined,
+  };
 
   return (
     <div className="flex h-screen bg-background overflow-hidden font-sans">
@@ -45,7 +99,7 @@ const App: React.FC = () => {
             <div className="w-10 h-10 bg-sidebar-primary rounded-xl flex items-center justify-center shadow-lg"><ShieldCheck size={22} className="text-sidebar-primary-foreground" /></div>
             <div>
               <h1 className="text-base font-black tracking-tight leading-none text-sidebar-foreground">MROSC<span className="text-sidebar-primary">Digital</span></h1>
-              <p className="text-[9px] font-bold text-sidebar-foreground/50 uppercase tracking-widest mt-1">RBAC Compliance v2.5</p>
+              <p className="text-[9px] font-bold text-sidebar-foreground/50 uppercase tracking-widest mt-1">Sistema de Parcerias</p>
             </div>
           </div>
           <button className="md:hidden text-sidebar-foreground" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button>
@@ -83,29 +137,44 @@ const App: React.FC = () => {
               <p className="font-semibold text-sidebar-foreground text-xs truncate">{currentUser.name}</p>
               <p className="text-sidebar-primary text-[10px] uppercase font-bold tracking-tight truncate">{currentUser.role}</p>
             </div>
-            <button onClick={() => { const roles = Object.values(UserRole); const nextRole = roles[(roles.indexOf(currentUser.role) + 1) % roles.length]; setCurrentUser({ ...currentUser, role: nextRole }); }} title="Trocar Perfil (Demo Mode)" className="text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors"><RefreshCw size={14} /></button>
+            <button 
+              onClick={handleSignOut} 
+              title="Sair do Sistema" 
+              className="text-sidebar-foreground/50 hover:text-destructive transition-colors p-2 hover:bg-destructive/10 rounded-lg"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="bg-card/80 backdrop-blur-md border-b border-border h-20 flex items-center justify-between px-8 z-10 shrink-0">
-          <div className="flex items-center space-x-6">
+        <header className="bg-card/80 backdrop-blur-md border-b border-border h-20 flex items-center justify-between px-4 md:px-8 z-10 shrink-0">
+          <div className="flex items-center space-x-4 md:space-x-6">
             <button className="text-muted-foreground hover:text-primary transition-colors p-2 hover:bg-primary/10 rounded-xl" onClick={() => setIsSidebarOpen(!isSidebarOpen)}><Menu size={22} /></button>
-            <div className="relative group">
+            <div className="relative group hidden md:block">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
-              <input type="text" placeholder="Busca global baseada em permissão..." className="pl-12 pr-6 py-3 border-none rounded-2xl text-sm bg-muted focus:bg-card focus:ring-4 focus:ring-primary/10 outline-none w-80 lg:w-[480px] transition-all" />
+              <input type="text" placeholder="Busca global..." className="pl-12 pr-6 py-3 border-none rounded-2xl text-sm bg-muted focus:bg-card focus:ring-4 focus:ring-primary/10 outline-none w-64 lg:w-80 xl:w-[400px] transition-all" />
             </div>
           </div>
-          <div className="flex items-center space-x-6">
-             <div className="flex flex-col items-end mr-4"><span className="text-[10px] font-black text-primary uppercase">Ambiente Seguro</span><span className="text-[9px] text-muted-foreground font-bold">{currentUser.department || 'Acesso Externo'}</span></div>
-            <div className="relative cursor-pointer group"><Bell className="text-muted-foreground group-hover:text-primary transition-colors" size={20} /><span className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full border-2 border-card">5</span></div>
-            <div className="h-10 w-px bg-border"></div>
-            <button className="flex items-center space-x-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest hover:text-primary transition-colors"><UserCircle size={20} /><span>Meu Perfil</span></button>
+          <div className="flex items-center space-x-4 md:space-x-6">
+            <div className="hidden md:flex flex-col items-end mr-4">
+              <span className="text-[10px] font-black text-primary uppercase">Ambiente Seguro</span>
+              <span className="text-[9px] text-muted-foreground font-bold">{currentUser.department || 'Prefeitura de Unaí'}</span>
+            </div>
+            <div className="relative cursor-pointer group">
+              <Bell className="text-muted-foreground group-hover:text-primary transition-colors" size={20} />
+              <span className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full border-2 border-card">3</span>
+            </div>
+            <div className="h-10 w-px bg-border hidden md:block"></div>
+            <button className="flex items-center space-x-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest hover:text-primary transition-colors">
+              <UserCircle size={20} />
+              <span className="hidden md:inline">Meu Perfil</span>
+            </button>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-10 bg-background/50">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-10 bg-background/50">
           <Routes>
             <Route path="/" element={<Dashboard user={currentUser} />} />
             <Route path="/amendments" element={canAccess('/amendments') ? <AmendmentsModule /> : <AccessDenied />} />
@@ -127,13 +196,28 @@ const App: React.FC = () => {
 };
 
 const AccessDenied = () => (
-  <div className="flex flex-col items-center justify-center h-full space-y-4">
-    <div className="p-6 bg-destructive/10 text-destructive rounded-full"><Lock size={64} /></div>
-    <h2 className="text-3xl font-black text-foreground">Acesso Restrito</h2>
-    <p className="text-muted-foreground text-center max-w-md">Seu perfil de usuário não possui permissão para acessar este módulo. Entre em contato com o Administrador Master se acreditar que isto é um erro.</p>
+  <div className="flex flex-col items-center justify-center h-full space-y-4 p-6 text-center">
+    <div className="p-6 bg-destructive/10 text-destructive rounded-full"><Lock size={48} /></div>
+    <h2 className="text-2xl md:text-3xl font-black text-foreground">Acesso Restrito</h2>
+    <p className="text-muted-foreground max-w-md">Seu perfil de usuário não possui permissão para acessar este módulo.</p>
     <Link to="/" className="px-8 py-3 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest">Voltar ao Dashboard</Link>
   </div>
 );
 
-const AppWrapper = () => (<HashRouter><App /></HashRouter>);
+const AppWrapper = () => (
+  <HashRouter>
+    <AuthProvider>
+      <Routes>
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/transparency" element={<TransparencyPortal />} />
+        <Route path="/*" element={
+          <ProtectedRoute>
+            <App />
+          </ProtectedRoute>
+        } />
+      </Routes>
+    </AuthProvider>
+  </HashRouter>
+);
+
 export default AppWrapper;
