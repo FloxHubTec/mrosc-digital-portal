@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useAdditives, Additive } from '@/hooks/useAdditives';
 import { usePartnerships } from '@/hooks/usePartnerships';
 import { useAuth } from '@/hooks/useAuth';
-import { ExportDropdown } from '@/components/ui/ExportDropdown';
+import ExportDropdown from '@/components/ui/ExportDropdown';
 import { exportData } from '@/utils/exportUtils';
 import { 
   FilePlus2, FileEdit, Check, X, Search, Plus, Clock, 

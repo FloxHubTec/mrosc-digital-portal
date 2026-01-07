@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useProposals, Proposal } from '@/hooks/useProposals';
 import { usePublicCalls } from '@/hooks/usePublicCalls';
 import { useOSCs } from '@/hooks/useOSCs';
-import { ExportDropdown } from '@/components/ui/ExportDropdown';
+import ExportDropdown from '@/components/ui/ExportDropdown';
 import { exportData } from '@/utils/exportUtils';
 import { 
   ClipboardCheck, FileText, Users, Trophy, AlertCircle, Search, 
