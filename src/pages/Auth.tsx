@@ -9,7 +9,7 @@ const Auth: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState('Usuário OSC');
+  const [role, setRole] = useState('osc_user');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
@@ -64,18 +64,12 @@ const Auth: React.FC = () => {
     }
   };
 
-  const roles = [
-    'Usuário OSC',
-    'Representante Legal OSC',
-    'Gestor da Parceria',
-    'Técnico - Execução Física',
-    'Técnico - Execução Financeira',
-    'Comissão de Seleção',
-    'Comissão de Monitoramento',
-    'Conselhos Municipais',
-    'Procuradoria Jurídica',
-    'Controle Interno',
-    'Administrador Master',
+  // Mapeamento: label exibido -> valor do banco de dados
+  const roleOptions = [
+    { label: 'Usuário OSC', value: 'osc_user' },
+    { label: 'Gestor da Parceria', value: 'gestor' },
+    { label: 'Técnico', value: 'tecnico' },
+    { label: 'Administrador Master', value: 'admin_master' },
   ];
 
   return (
@@ -181,8 +175,8 @@ const Auth: React.FC = () => {
                   onChange={(e) => setRole(e.target.value)}
                   className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20 transition-all appearance-none cursor-pointer"
                 >
-                  {roles.map((r) => (
-                    <option key={r} value={r}>{r}</option>
+                  {roleOptions.map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
                   ))}
                 </select>
               </div>
