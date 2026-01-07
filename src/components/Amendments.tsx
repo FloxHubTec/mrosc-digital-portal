@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { 
-  FileText, Plus, DollarSign, User, Clock, Scale, ChevronRight, 
-  X, Loader2, Download, Filter, BarChart3, ArrowLeft, Edit, Trash2,
+  FileText, Plus, DollarSign, User, Clock, Scale,
+  X, Loader2, Filter, BarChart3, ArrowLeft, Edit, Trash2,
   AlertTriangle, CheckCircle
 } from 'lucide-react';
 import { useAmendments } from '@/hooks/useAmendments';
 import { useOSCs } from '@/hooks/useOSCs';
 import { usePartnerships } from '@/hooks/usePartnerships';
-
+import ExportDropdown from '@/components/ui/ExportDropdown';
+import { exportData, ExportFormat } from '@/utils/exportUtils';
 const AmendmentsModule: React.FC = () => {
   const { amendments, loading, createAmendment, updateAmendment, deleteAmendment, getStats } = useAmendments();
   const { oscs } = useOSCs();
@@ -112,26 +113,26 @@ const AmendmentsModule: React.FC = () => {
     return true;
   });
 
-  const exportToCSV = () => {
-    const headers = ['Número', 'Autor', 'Valor', 'Ano', 'Tipo', 'Indicação', 'Status', 'OSC Beneficiária', 'Prazo Legal'];
-    const rows = filteredAmendments.map(a => [
+  const handleExport = (format: ExportFormat) => {
+    const headers = ['Número', 'Autor', 'Valor (R$)', 'Ano', 'Tipo', 'Indicação', 'Status', 'OSC Beneficiária', 'Prazo Legal'];
+    const data = filteredAmendments.map(a => [
       a.numero,
       a.autor,
-      a.valor.toString(),
+      a.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
       a.ano.toString(),
       a.tipo || '',
       a.tipo_indicacao || '',
       a.status || '',
       a.osc?.razao_social || '',
-      a.prazo_legal || '',
+      a.prazo_legal ? new Date(a.prazo_legal).toLocaleDateString('pt-BR') : '',
     ]);
     
-    const csvContent = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `emendas_parlamentares_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
+    exportData(format, {
+      filename: `emendas_parlamentares_${new Date().toISOString().split('T')[0]}`,
+      title: 'Relatório de Emendas Parlamentares',
+      headers,
+      data,
+    });
   };
 
   const years = [...new Set(amendments.map(a => a.ano))].sort((a, b) => b - a);
@@ -154,12 +155,7 @@ const AmendmentsModule: React.FC = () => {
           >
             <ArrowLeft size={16} /> Voltar
           </button>
-          <button
-            onClick={exportToCSV}
-            className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase flex items-center gap-2"
-          >
-            <Download size={16} /> Exportar CSV
-          </button>
+          <ExportDropdown onExport={handleExport} />
         </header>
 
         <div className="bg-card rounded-[3rem] p-8 shadow-xl border border-border">
