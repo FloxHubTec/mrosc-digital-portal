@@ -12,11 +12,15 @@ import { usePartnerships } from '@/hooks/usePartnerships';
 import { useAuth } from '@/hooks/useAuth';
 import ExportDropdown from '@/components/ui/ExportDropdown';
 import { exportData } from '@/utils/exportUtils';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { 
   FilePlus2, FileEdit, Check, X, Search, Plus, Clock, 
-  CheckCircle, XCircle, DollarSign, Calendar, TrendingUp, TrendingDown
+  CheckCircle, XCircle, TrendingUp, TrendingDown, FileDown, Eye
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const StatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
@@ -51,6 +55,8 @@ const AdditivesModule: React.FC = () => {
   const [tipoFilter, setTipoFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedAdditive, setSelectedAdditive] = useState<Additive | null>(null);
   
   const [formData, setFormData] = useState({
     partnership_id: '',
@@ -117,8 +123,102 @@ const AdditivesModule: React.FC = () => {
     if (result) toast.success('Rejeitado');
   };
 
+  const generateConsolidatedDocument = (additive: Additive) => {
+    const doc = new jsPDF();
+    const partnership = partnerships.find(p => p.id === additive.partnership_id);
+    
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(additive.tipo === 'aditivo' ? 'TERMO ADITIVO' : 'APOSTILAMENTO', 105, 20, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.text(`Nº ${additive.numero}`, 105, 28, { align: 'center' });
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    
+    let yPos = 45;
+    
+    doc.text(`TERMO DE PARCERIA: ${partnership?.numero_termo || '-'}`, 14, yPos);
+    yPos += 8;
+    doc.text(`OSC: ${additive.partnership?.osc?.razao_social || '-'}`, 14, yPos);
+    yPos += 8;
+    doc.text(`DATA: ${format(new Date(additive.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`, 14, yPos);
+    yPos += 15;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('MOTIVO:', 14, yPos);
+    doc.setFont('helvetica', 'normal');
+    yPos += 7;
+    const motivoLines = doc.splitTextToSize(additive.motivo, 180);
+    doc.text(motivoLines, 14, yPos);
+    yPos += motivoLines.length * 5 + 10;
+    
+    if (additive.justificativa) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('JUSTIFICATIVA:', 14, yPos);
+      doc.setFont('helvetica', 'normal');
+      yPos += 7;
+      const justLines = doc.splitTextToSize(additive.justificativa, 180);
+      doc.text(justLines, 14, yPos);
+      yPos += justLines.length * 5 + 10;
+    }
+    
+    if (additive.valor_anterior > 0 || additive.valor_novo > 0) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('ALTERAÇÃO DE VALOR:', 14, yPos);
+      doc.setFont('helvetica', 'normal');
+      yPos += 7;
+      doc.text(`Valor anterior: ${additive.valor_anterior.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, yPos);
+      yPos += 6;
+      doc.text(`Novo valor: ${additive.valor_novo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, yPos);
+      yPos += 6;
+      const diff = additive.valor_novo - additive.valor_anterior;
+      doc.text(`Diferença: ${diff.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (${diff >= 0 ? '+' : ''}${((diff / additive.valor_anterior) * 100).toFixed(1)}%)`, 14, yPos);
+      yPos += 12;
+    }
+    
+    if (additive.prazo_anterior || additive.prazo_novo) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('ALTERAÇÃO DE PRAZO:', 14, yPos);
+      doc.setFont('helvetica', 'normal');
+      yPos += 7;
+      if (additive.prazo_anterior) {
+        doc.text(`Prazo anterior: ${new Date(additive.prazo_anterior).toLocaleDateString('pt-BR')}`, 14, yPos);
+        yPos += 6;
+      }
+      if (additive.prazo_novo) {
+        doc.text(`Novo prazo: ${new Date(additive.prazo_novo).toLocaleDateString('pt-BR')}`, 14, yPos);
+        yPos += 12;
+      }
+    }
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text(`STATUS: ${additive.status.toUpperCase()}`, 14, yPos);
+    
+    if (additive.status === 'aprovado' && additive.aprovado_em) {
+      yPos += 7;
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Aprovado em: ${format(new Date(additive.aprovado_em), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, 14, yPos);
+    }
+    
+    yPos += 30;
+    doc.text('_______________________________', 30, yPos);
+    doc.text('Gestor Municipal', 50, yPos + 7);
+    
+    doc.text('_______________________________', 120, yPos);
+    doc.text('Representante OSC', 135, yPos + 7);
+    
+    // Footer
+    doc.setFontSize(8);
+    doc.text('Sistema MROSC Digital - Prefeitura Municipal de Unaí/MG', 105, 285, { align: 'center' });
+    
+    doc.save(`${additive.tipo}-${additive.numero?.replace('/', '-')}.pdf`);
+    toast.success('Documento consolidado gerado!');
+  };
+
   const handleExport = (format: 'csv' | 'excel' | 'pdf') => {
-    const headers = ['Número', 'Tipo', 'Parceria', 'OSC', 'Motivo', 'Valor Anterior', 'Valor Novo', 'Status'];
+    const headers = ['Número', 'Tipo', 'Parceria', 'OSC', 'Motivo', 'Valor Anterior', 'Valor Novo', 'Prazo Anterior', 'Prazo Novo', 'Status', 'Data'];
     const data = filteredAdditives.map(a => [
       a.numero || '-',
       a.tipo,
@@ -127,9 +227,12 @@ const AdditivesModule: React.FC = () => {
       a.motivo,
       a.valor_anterior.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
       a.valor_novo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+      a.prazo_anterior ? new Date(a.prazo_anterior).toLocaleDateString('pt-BR') : '-',
+      a.prazo_novo ? new Date(a.prazo_novo).toLocaleDateString('pt-BR') : '-',
       a.status,
+      new Date(a.created_at).toLocaleDateString('pt-BR'),
     ]);
-    exportData(format, { filename: 'aditivos', title: 'Aditivos e Apostilamentos', headers, data });
+    exportData(format, { filename: 'aditivos-apostilamentos', title: 'Aditivos e Apostilamentos - MROSC Unaí/MG', headers, data });
   };
 
   if (loading) {
@@ -153,7 +256,7 @@ const AdditivesModule: React.FC = () => {
           <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
             <DialogTrigger asChild>
               <Button className="gap-2">
-                <Plus size={16} /> Novo Aditivo
+                <Plus size={16} /> Novo Registro
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg">
@@ -164,12 +267,12 @@ const AdditivesModule: React.FC = () => {
                 <Select value={formData.tipo} onValueChange={v => setFormData({ ...formData, tipo: v })}>
                   <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="aditivo">Aditivo (altera termo)</SelectItem>
-                    <SelectItem value="apostilamento">Apostilamento (ajuste simples)</SelectItem>
+                    <SelectItem value="aditivo">Aditivo (altera cláusulas do termo)</SelectItem>
+                    <SelectItem value="apostilamento">Apostilamento (ajuste administrativo)</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={formData.partnership_id} onValueChange={v => setFormData({ ...formData, partnership_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione a Parceria" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecione a Parceria *" /></SelectTrigger>
                   <SelectContent>
                     {partnerships.map(p => (
                       <SelectItem key={p.id} value={p.id}>
@@ -184,48 +287,55 @@ const AdditivesModule: React.FC = () => {
                   onChange={e => setFormData({ ...formData, motivo: e.target.value })} 
                 />
                 <Textarea 
-                  placeholder="Justificativa detalhada" 
+                  placeholder="Justificativa detalhada (fundamentação legal, técnica, etc.)" 
                   value={formData.justificativa} 
-                  onChange={e => setFormData({ ...formData, justificativa: e.target.value })} 
+                  onChange={e => setFormData({ ...formData, justificativa: e.target.value })}
+                  rows={3}
                 />
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-bold text-muted-foreground">Valor Anterior</label>
-                    <Input 
-                      type="number" 
-                      placeholder="R$ 0,00" 
-                      value={formData.valor_anterior} 
-                      onChange={e => setFormData({ ...formData, valor_anterior: e.target.value })} 
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-muted-foreground">Novo Valor</label>
-                    <Input 
-                      type="number" 
-                      placeholder="R$ 0,00" 
-                      value={formData.valor_novo} 
-                      onChange={e => setFormData({ ...formData, valor_novo: e.target.value })} 
-                    />
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="text-xs font-bold text-muted-foreground mb-2">Alteração de Valor (se aplicável)</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Valor Anterior</label>
+                      <Input 
+                        type="number" 
+                        placeholder="R$ 0,00" 
+                        value={formData.valor_anterior} 
+                        onChange={e => setFormData({ ...formData, valor_anterior: e.target.value })} 
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Novo Valor</label>
+                      <Input 
+                        type="number" 
+                        placeholder="R$ 0,00" 
+                        value={formData.valor_novo} 
+                        onChange={e => setFormData({ ...formData, valor_novo: e.target.value })} 
+                      />
+                    </div>
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-bold text-muted-foreground">Prazo Anterior</label>
-                    <Input 
-                      type="date" 
-                      value={formData.prazo_anterior} 
-                      onChange={e => setFormData({ ...formData, prazo_anterior: e.target.value })} 
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-muted-foreground">Novo Prazo</label>
-                    <Input 
-                      type="date" 
-                      value={formData.prazo_novo} 
-                      onChange={e => setFormData({ ...formData, prazo_novo: e.target.value })} 
-                    />
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="text-xs font-bold text-muted-foreground mb-2">Alteração de Prazo (se aplicável)</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Prazo Anterior</label>
+                      <Input 
+                        type="date" 
+                        value={formData.prazo_anterior} 
+                        onChange={e => setFormData({ ...formData, prazo_anterior: e.target.value })} 
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Novo Prazo</label>
+                      <Input 
+                        type="date" 
+                        value={formData.prazo_novo} 
+                        onChange={e => setFormData({ ...formData, prazo_novo: e.target.value })} 
+                      />
+                    </div>
                   </div>
                 </div>
                 
@@ -345,45 +455,69 @@ const AdditivesModule: React.FC = () => {
                 </TableRow>
               ) : (
                 filteredAdditives.map(additive => (
-                  <TableRow key={additive.id}>
+                  <TableRow key={additive.id} className="group">
                     <TableCell className="font-mono text-sm">{additive.numero}</TableCell>
                     <TableCell><TipoBadge tipo={additive.tipo} /></TableCell>
                     <TableCell>{additive.partnership?.numero_termo || '-'}</TableCell>
-                    <TableCell>{additive.partnership?.osc?.razao_social || '-'}</TableCell>
+                    <TableCell className="max-w-[150px] truncate">{additive.partnership?.osc?.razao_social || '-'}</TableCell>
                     <TableCell className="max-w-[200px] truncate">{additive.motivo}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1 text-sm">
-                        <span className="text-muted-foreground line-through">
-                          {additive.valor_anterior.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </span>
-                        <span className="mx-1">→</span>
-                        <span className="font-semibold">
-                          {additive.valor_novo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </span>
-                      </div>
+                      {additive.valor_anterior > 0 || additive.valor_novo > 0 ? (
+                        <div className="flex items-center gap-1 text-sm">
+                          <span className="text-muted-foreground line-through">
+                            {additive.valor_anterior.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </span>
+                          <span className="mx-1">→</span>
+                          <span className="font-semibold">
+                            {additive.valor_novo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                     <TableCell><StatusBadge status={additive.status} /></TableCell>
                     <TableCell className="text-right">
-                      {additive.status === 'pendente' && (
-                        <div className="flex justify-end gap-1">
+                      <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => { setSelectedAdditive(additive); setShowDetailModal(true); }}
+                          title="Ver detalhes"
+                        >
+                          <Eye size={14} />
+                        </Button>
+                        {additive.status === 'aprovado' && (
                           <Button 
                             size="sm" 
                             variant="ghost"
-                            onClick={() => handleApprove(additive.id)}
-                            title="Aprovar"
+                            onClick={() => generateConsolidatedDocument(additive)}
+                            title="Gerar documento consolidado"
                           >
-                            <Check size={14} className="text-green-600" />
+                            <FileDown size={14} className="text-blue-600" />
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => handleReject(additive.id)}
-                            title="Rejeitar"
-                          >
-                            <X size={14} className="text-red-600" />
-                          </Button>
-                        </div>
-                      )}
+                        )}
+                        {additive.status === 'pendente' && (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => handleApprove(additive.id)}
+                              title="Aprovar"
+                            >
+                              <Check size={14} className="text-green-600" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => handleReject(additive.id)}
+                              title="Rejeitar"
+                            >
+                              <X size={14} className="text-red-600" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -392,6 +526,91 @@ const AdditivesModule: React.FC = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Detail Modal */}
+      <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedAdditive?.tipo === 'aditivo' ? <FilePlus2 size={20} /> : <FileEdit size={20} />}
+              {selectedAdditive?.tipo === 'aditivo' ? 'Termo Aditivo' : 'Apostilamento'} {selectedAdditive?.numero}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedAdditive && (
+            <div className="space-y-4 mt-4">
+              <div className="flex items-center justify-between">
+                <StatusBadge status={selectedAdditive.status} />
+                <TipoBadge tipo={selectedAdditive.tipo} />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="text-xs font-bold text-muted-foreground">Parceria</p>
+                  <p className="font-semibold">{selectedAdditive.partnership?.numero_termo}</p>
+                </div>
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="text-xs font-bold text-muted-foreground">OSC</p>
+                  <p className="font-semibold">{selectedAdditive.partnership?.osc?.razao_social}</p>
+                </div>
+              </div>
+              
+              <div>
+                <p className="text-xs font-bold text-muted-foreground mb-1">Motivo</p>
+                <p className="bg-muted p-3 rounded-lg">{selectedAdditive.motivo}</p>
+              </div>
+              
+              {selectedAdditive.justificativa && (
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground mb-1">Justificativa</p>
+                  <p className="bg-muted p-3 rounded-lg">{selectedAdditive.justificativa}</p>
+                </div>
+              )}
+              
+              {(selectedAdditive.valor_anterior > 0 || selectedAdditive.valor_novo > 0) && (
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-center">
+                    <p className="text-xs font-bold text-red-600">Valor Anterior</p>
+                    <p className="text-lg font-bold text-red-800">{selectedAdditive.valor_anterior.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                  </div>
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+                    <p className="text-xs font-bold text-green-600">Novo Valor</p>
+                    <p className="text-lg font-bold text-green-800">{selectedAdditive.valor_novo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                  </div>
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-center">
+                    <p className="text-xs font-bold text-blue-600">Diferença</p>
+                    <p className="text-lg font-bold text-blue-800">
+                      {(selectedAdditive.valor_novo - selectedAdditive.valor_anterior).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {(selectedAdditive.prazo_anterior || selectedAdditive.prazo_novo) && (
+                <div className="grid grid-cols-2 gap-4">
+                  {selectedAdditive.prazo_anterior && (
+                    <div className="p-3 bg-muted rounded-lg text-center">
+                      <p className="text-xs font-bold text-muted-foreground">Prazo Anterior</p>
+                      <p className="font-semibold">{new Date(selectedAdditive.prazo_anterior).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                  )}
+                  {selectedAdditive.prazo_novo && (
+                    <div className="p-3 bg-muted rounded-lg text-center">
+                      <p className="text-xs font-bold text-muted-foreground">Novo Prazo</p>
+                      <p className="font-semibold">{new Date(selectedAdditive.prazo_novo).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {selectedAdditive.status === 'aprovado' && (
+                <Button onClick={() => generateConsolidatedDocument(selectedAdditive)} className="w-full">
+                  <FileDown size={16} className="mr-2" /> Gerar Documento Consolidado (PDF)
+                </Button>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

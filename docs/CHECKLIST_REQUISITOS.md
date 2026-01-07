@@ -176,16 +176,16 @@
 | 8.4 | Análise técnica | ✅ | Parecer técnico implementado |
 | 8.5 | Pontuação de critérios | ✅ | pontuacao_tecnica |
 | 8.6 | Ranking de propostas | ✅ | Ranking automático |
-| 8.7 | Atas da comissão | ⏳ | |
-| 8.8 | Publicação de resultados | ⏳ | |
-| 8.9 | Prazo para recursos | ⏳ | |
-| 8.10 | Análise de recursos | ✅ | Sistema de recursos |
+| 8.7 | Atas da comissão | ✅ | Geração PDF implementada |
+| 8.8 | Publicação de resultados | ✅ | Botão publicar resultado |
+| 8.9 | Prazo para recursos | ✅ | Sistema de recursos |
+| 8.10 | Análise de recursos | ✅ | Deferido/indeferido |
 | 8.11 | Resultado final | ✅ | Status selecionada |
-| 8.12 | Convocação do selecionado | ⏳ | |
-| 8.13 | Diligências | ⏳ | |
+| 8.12 | Convocação do selecionado | ✅ | Status convocada |
+| 8.13 | Diligências | ✅ | Modal de diligência |
 | 8.14 | Desclassificação | ✅ | Status desclassificada |
 
-**Progresso: 8/14 (57%)**
+**Progresso: 13/14 (93%)**
 
 ---
 
@@ -263,9 +263,9 @@
 | 12.6 | Aprovação de aditivo | ✅ | Fluxo aprovação/rejeição |
 | 12.7 | Apostilamento | ✅ | Tipo apostilamento |
 | 12.8 | Histórico de alterações | ✅ | Tabela additives |
-| 12.9 | Documento consolidado | ⏳ | |
+| 12.9 | Documento consolidado | ✅ | Geração PDF implementada |
 
-**Progresso: 8/9 (89%)**
+**Progresso: 9/9 (100%)**
 
 ---
 
