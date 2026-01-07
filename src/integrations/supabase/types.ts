@@ -14,6 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      additives: {
+        Row: {
+          aprovado_em: string | null
+          aprovado_por: string | null
+          created_at: string
+          documento_url: string | null
+          id: string
+          justificativa: string | null
+          motivo: string
+          numero: string | null
+          partnership_id: string
+          prazo_anterior: string | null
+          prazo_novo: string | null
+          status: string | null
+          tipo: string
+          updated_at: string | null
+          valor_anterior: number | null
+          valor_novo: number | null
+        }
+        Insert: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          created_at?: string
+          documento_url?: string | null
+          id?: string
+          justificativa?: string | null
+          motivo: string
+          numero?: string | null
+          partnership_id: string
+          prazo_anterior?: string | null
+          prazo_novo?: string | null
+          status?: string | null
+          tipo?: string
+          updated_at?: string | null
+          valor_anterior?: number | null
+          valor_novo?: number | null
+        }
+        Update: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          created_at?: string
+          documento_url?: string | null
+          id?: string
+          justificativa?: string | null
+          motivo?: string
+          numero?: string | null
+          partnership_id?: string
+          prazo_anterior?: string | null
+          prazo_novo?: string | null
+          status?: string | null
+          tipo?: string
+          updated_at?: string | null
+          valor_anterior?: number | null
+          valor_novo?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "additives_partnership_id_fkey"
+            columns: ["partnership_id"]
+            isOneToOne: false
+            referencedRelation: "partnerships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       amendments: {
         Row: {
           ano: number
@@ -166,6 +231,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      knowledge_base: {
+        Row: {
+          ativo: boolean | null
+          categoria: string | null
+          conteudo: string
+          created_at: string
+          id: string
+          tags: string[] | null
+          titulo: string
+          updated_at: string | null
+          visualizacoes: number | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          categoria?: string | null
+          conteudo: string
+          created_at?: string
+          id?: string
+          tags?: string[] | null
+          titulo: string
+          updated_at?: string | null
+          visualizacoes?: number | null
+        }
+        Update: {
+          ativo?: boolean | null
+          categoria?: string | null
+          conteudo?: string
+          created_at?: string
+          id?: string
+          tags?: string[] | null
+          titulo?: string
+          updated_at?: string | null
+          visualizacoes?: number | null
+        }
+        Relationships: []
       }
       legislation: {
         Row: {
@@ -385,6 +486,90 @@ export type Database = {
         }
         Relationships: []
       }
+      proposals: {
+        Row: {
+          avaliador_id: string | null
+          created_at: string
+          data_avaliacao: string | null
+          data_inscricao: string | null
+          descricao: string | null
+          documentos_urls: Json | null
+          id: string
+          osc_id: string | null
+          parecer_tecnico: string | null
+          pontuacao_tecnica: number | null
+          pontuacao_total: number | null
+          public_call_id: string | null
+          ranking: number | null
+          recurso_resposta: string | null
+          recurso_status: string | null
+          recurso_texto: string | null
+          status: string | null
+          titulo: string
+          updated_at: string | null
+          valor_solicitado: number | null
+        }
+        Insert: {
+          avaliador_id?: string | null
+          created_at?: string
+          data_avaliacao?: string | null
+          data_inscricao?: string | null
+          descricao?: string | null
+          documentos_urls?: Json | null
+          id?: string
+          osc_id?: string | null
+          parecer_tecnico?: string | null
+          pontuacao_tecnica?: number | null
+          pontuacao_total?: number | null
+          public_call_id?: string | null
+          ranking?: number | null
+          recurso_resposta?: string | null
+          recurso_status?: string | null
+          recurso_texto?: string | null
+          status?: string | null
+          titulo: string
+          updated_at?: string | null
+          valor_solicitado?: number | null
+        }
+        Update: {
+          avaliador_id?: string | null
+          created_at?: string
+          data_avaliacao?: string | null
+          data_inscricao?: string | null
+          descricao?: string | null
+          documentos_urls?: Json | null
+          id?: string
+          osc_id?: string | null
+          parecer_tecnico?: string | null
+          pontuacao_tecnica?: number | null
+          pontuacao_total?: number | null
+          public_call_id?: string | null
+          ranking?: number | null
+          recurso_resposta?: string | null
+          recurso_status?: string | null
+          recurso_texto?: string | null
+          status?: string | null
+          titulo?: string
+          updated_at?: string | null
+          valor_solicitado?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposals_osc_id_fkey"
+            columns: ["osc_id"]
+            isOneToOne: false
+            referencedRelation: "oscs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_public_call_id_fkey"
+            columns: ["public_call_id"]
+            isOneToOne: false
+            referencedRelation: "public_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       public_calls: {
         Row: {
           created_at: string
@@ -418,6 +603,96 @@ export type Database = {
           pdf_url?: string | null
           status?: string | null
           valor_total?: number | null
+        }
+        Relationships: []
+      }
+      support_tickets: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          descricao: string
+          id: string
+          prioridade: string | null
+          respondido_em: string | null
+          respondido_por: string | null
+          resposta: string | null
+          status: string | null
+          titulo: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          descricao: string
+          id?: string
+          prioridade?: string | null
+          respondido_em?: string | null
+          respondido_por?: string | null
+          resposta?: string | null
+          status?: string | null
+          titulo: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          descricao?: string
+          id?: string
+          prioridade?: string | null
+          respondido_em?: string | null
+          respondido_por?: string | null
+          resposta?: string | null
+          status?: string | null
+          titulo?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      training_events: {
+        Row: {
+          ativo: boolean | null
+          created_at: string
+          data_fim: string | null
+          data_inicio: string | null
+          descricao: string | null
+          id: string
+          inscritos: number | null
+          link_inscricao: string | null
+          material_url: string | null
+          tipo: string | null
+          titulo: string
+          vagas: number | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          id?: string
+          inscritos?: number | null
+          link_inscricao?: string | null
+          material_url?: string | null
+          tipo?: string | null
+          titulo: string
+          vagas?: number | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          id?: string
+          inscritos?: number | null
+          link_inscricao?: string | null
+          material_url?: string | null
+          tipo?: string | null
+          titulo?: string
+          vagas?: number | null
         }
         Relationships: []
       }
