@@ -47,6 +47,18 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -56,6 +68,19 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+        },
+        /* Teal palette for institutional use */
+        teal: {
+          50: "hsl(175 55% 95%)",
+          100: "hsl(175 41% 92%)",
+          200: "hsl(175 45% 82%)",
+          300: "hsl(174 48% 68%)",
+          400: "hsl(174 52% 52%)",
+          500: "hsl(173 55% 40%)",
+          600: "hsl(173 58% 32%)",
+          700: "hsl(173 58% 26%)",
+          800: "hsl(173 58% 22%)",
+          900: "hsl(173 60% 18%)",
         },
       },
       borderRadius: {
