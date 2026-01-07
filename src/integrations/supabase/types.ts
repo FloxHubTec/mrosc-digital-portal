@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      amendments: {
+        Row: {
+          ano: number
+          autor: string
+          created_at: string
+          descricao: string | null
+          id: string
+          numero: string
+          osc_beneficiaria_id: string | null
+          partnership_id: string | null
+          prazo_legal: string | null
+          status: string | null
+          tipo: string | null
+          tipo_indicacao: string | null
+          updated_at: string | null
+          valor: number
+        }
+        Insert: {
+          ano: number
+          autor: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          numero: string
+          osc_beneficiaria_id?: string | null
+          partnership_id?: string | null
+          prazo_legal?: string | null
+          status?: string | null
+          tipo?: string | null
+          tipo_indicacao?: string | null
+          updated_at?: string | null
+          valor?: number
+        }
+        Update: {
+          ano?: number
+          autor?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          numero?: string
+          osc_beneficiaria_id?: string | null
+          partnership_id?: string | null
+          prazo_legal?: string | null
+          status?: string | null
+          tipo?: string | null
+          tipo_indicacao?: string | null
+          updated_at?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "amendments_osc_beneficiaria_id_fkey"
+            columns: ["osc_beneficiaria_id"]
+            isOneToOne: false
+            referencedRelation: "oscs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "amendments_partnership_id_fkey"
+            columns: ["partnership_id"]
+            isOneToOne: false
+            referencedRelation: "partnerships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string | null
@@ -41,6 +107,102 @@ export type Database = {
           record_id?: string | null
           table_name?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      communications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          partnership_id: string | null
+          recipient_id: string | null
+          recipient_osc_id: string | null
+          send_email: boolean | null
+          sender_id: string
+          status: string | null
+          subject: string
+          type: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          partnership_id?: string | null
+          recipient_id?: string | null
+          recipient_osc_id?: string | null
+          send_email?: boolean | null
+          sender_id: string
+          status?: string | null
+          subject: string
+          type?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          partnership_id?: string | null
+          recipient_id?: string | null
+          recipient_osc_id?: string | null
+          send_email?: boolean | null
+          sender_id?: string
+          status?: string | null
+          subject?: string
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communications_partnership_id_fkey"
+            columns: ["partnership_id"]
+            isOneToOne: false
+            referencedRelation: "partnerships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communications_recipient_osc_id_fkey"
+            columns: ["recipient_osc_id"]
+            isOneToOne: false
+            referencedRelation: "oscs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legislation: {
+        Row: {
+          arquivo_url: string | null
+          ativo: boolean | null
+          conteudo: string | null
+          created_at: string
+          data_publicacao: string | null
+          ementa: string | null
+          id: string
+          numero: string | null
+          tipo: string | null
+          titulo: string
+        }
+        Insert: {
+          arquivo_url?: string | null
+          ativo?: boolean | null
+          conteudo?: string | null
+          created_at?: string
+          data_publicacao?: string | null
+          ementa?: string | null
+          id?: string
+          numero?: string | null
+          tipo?: string | null
+          titulo: string
+        }
+        Update: {
+          arquivo_url?: string | null
+          ativo?: boolean | null
+          conteudo?: string | null
+          created_at?: string
+          data_publicacao?: string | null
+          ementa?: string | null
+          id?: string
+          numero?: string | null
+          tipo?: string | null
+          titulo?: string
         }
         Relationships: []
       }
@@ -128,30 +290,98 @@ export type Database = {
           },
         ]
       }
+      pmis: {
+        Row: {
+          area_atuacao: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          justificativa: string | null
+          objetivo: string | null
+          osc_proponente_id: string | null
+          parecer: string | null
+          protocolo: string
+          publico_alvo: string | null
+          status: string | null
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          area_atuacao?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          justificativa?: string | null
+          objetivo?: string | null
+          osc_proponente_id?: string | null
+          parecer?: string | null
+          protocolo: string
+          publico_alvo?: string | null
+          status?: string | null
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          area_atuacao?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          justificativa?: string | null
+          objetivo?: string | null
+          osc_proponente_id?: string | null
+          parecer?: string | null
+          protocolo?: string
+          publico_alvo?: string | null
+          status?: string | null
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pmis_osc_proponente_id_fkey"
+            columns: ["osc_proponente_id"]
+            isOneToOne: false
+            referencedRelation: "oscs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
+          department: string | null
           email: string | null
           full_name: string | null
           id: string
           osc_id: string | null
+          phone: string | null
           role: string | null
+          updated_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
+          department?: string | null
           email?: string | null
           full_name?: string | null
           id: string
           osc_id?: string | null
+          phone?: string | null
           role?: string | null
+          updated_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
+          department?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
           osc_id?: string | null
+          phone?: string | null
           role?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -234,6 +464,71 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "transactions_partnership_id_fkey"
+            columns: ["partnership_id"]
+            isOneToOne: false
+            referencedRelation: "partnerships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_plans: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          cronograma: Json | null
+          equipe: Json | null
+          id: string
+          justificativa: string | null
+          metas: Json | null
+          objetivos: string | null
+          observacoes: string | null
+          orcamento: Json | null
+          partnership_id: string | null
+          status: string | null
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          cronograma?: Json | null
+          equipe?: Json | null
+          id?: string
+          justificativa?: string | null
+          metas?: Json | null
+          objetivos?: string | null
+          observacoes?: string | null
+          orcamento?: Json | null
+          partnership_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          cronograma?: Json | null
+          equipe?: Json | null
+          id?: string
+          justificativa?: string | null
+          metas?: Json | null
+          objetivos?: string | null
+          observacoes?: string | null
+          orcamento?: Json | null
+          partnership_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_plans_partnership_id_fkey"
             columns: ["partnership_id"]
             isOneToOne: false
             referencedRelation: "partnerships"
