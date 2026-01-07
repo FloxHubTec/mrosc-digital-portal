@@ -54,15 +54,15 @@
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
-    /* Sidebar institucional */
-    --sidebar-background: 173 58% 26%;
+    /* Sidebar institucional - Verde Petróleo Escuro */
+    --sidebar-background: 155 32% 18%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 173 58% 26%;
-    --sidebar-accent: 173 58% 32%;
+    --sidebar-primary: 155 60% 48%;
+    --sidebar-primary-foreground: 155 32% 15%;
+    --sidebar-accent: 155 28% 24%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 173 40% 35%;
-    --sidebar-ring: 0 0% 100%;
+    --sidebar-border: 155 22% 26%;
+    --sidebar-ring: 155 60% 48%;
   }
 
   .dark {

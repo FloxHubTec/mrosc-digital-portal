@@ -21,9 +21,9 @@ import { MOCK_USER, getAccessibleRoutes, User } from './services/authContext';
 const SidebarItem = ({ to, icon: Icon, label, active, hidden }: { to: string, icon: any, label: string, active: boolean, hidden?: boolean }) => {
   if (hidden) return null;
   return (
-    <Link to={to} className={`flex items-center space-x-3 p-3 rounded-xl transition-all ${active ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-lg translate-x-1' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50'}`}>
+    <Link to={to} className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${active ? 'bg-sidebar-accent text-sidebar-foreground font-bold' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}`}>
       <Icon size={18} />
-      <span className="font-semibold text-sm">{label}</span>
+      <span className="text-sm">{label}</span>
     </Link>
   );
 };
@@ -39,19 +39,19 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden font-sans">
-      <aside className={`bg-sidebar-background text-sidebar-foreground w-72 transition-all duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed md:relative z-50 h-full border-r border-sidebar-border overflow-y-auto scrollbar-hide`}>
-        <div className="p-8 flex items-center justify-between">
+      <aside className={`bg-sidebar text-sidebar-foreground w-72 transition-all duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed md:relative z-50 h-full border-r border-sidebar-border overflow-y-auto scrollbar-hide`}>
+        <div className="p-6 flex items-center justify-between border-b border-sidebar-border">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-sidebar-primary rounded-xl flex items-center justify-center text-sidebar-primary-foreground shadow-xl shadow-sidebar-background/40"><ShieldCheck size={24} /></div>
+            <div className="w-10 h-10 bg-sidebar-primary rounded-xl flex items-center justify-center shadow-lg"><ShieldCheck size={22} className="text-sidebar-primary-foreground" /></div>
             <div>
-              <h1 className="text-lg font-black tracking-tighter leading-none">MROSC<span className="text-sidebar-primary">Digital</span></h1>
-              <p className="text-[9px] font-bold text-sidebar-foreground/70 uppercase tracking-widest mt-1">RBAC Compliance v2.5</p>
+              <h1 className="text-base font-black tracking-tight leading-none text-sidebar-foreground">MROSC<span className="text-sidebar-primary">Digital</span></h1>
+              <p className="text-[9px] font-bold text-sidebar-foreground/50 uppercase tracking-widest mt-1">RBAC Compliance v2.5</p>
             </div>
           </div>
-          <button className="md:hidden" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button>
+          <button className="md:hidden text-sidebar-foreground" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button>
         </div>
 
-        <div className="px-4 py-2 text-[10px] font-black text-sidebar-foreground/40 uppercase tracking-widest mb-2">Operacional</div>
+        <div className="px-4 py-4 text-[10px] font-bold text-sidebar-primary uppercase tracking-widest">Operacional</div>
         <nav className="px-4 space-y-1">
           <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" active={location.pathname === '/'} />
           <SidebarItem to="/amendments" icon={FileText} label="Emendas Parlamentares" active={location.pathname === '/amendments'} hidden={!canAccess('/amendments')} />
@@ -61,7 +61,7 @@ const App: React.FC = () => {
           <SidebarItem to="/accountability" icon={ClipboardList} label="Contas (REO/REFF)" active={location.pathname === '/accountability'} hidden={!canAccess('/accountability')} />
         </nav>
 
-        <div className="px-4 py-6 text-[10px] font-black text-sidebar-foreground/40 uppercase tracking-widest mt-4 border-t border-sidebar-border">Gestão e Dados</div>
+        <div className="px-4 py-4 text-[10px] font-bold text-sidebar-primary uppercase tracking-widest mt-2 border-t border-sidebar-border pt-6">Gestão e Dados</div>
         <nav className="px-4 space-y-1">
           <SidebarItem to="/oscs" icon={Users} label="Cadastro OSCs" active={location.pathname === '/oscs'} hidden={!canAccess('/oscs')} />
           <SidebarItem to="/reports" icon={BarChartHorizontal} label="Relatórios e BI" active={location.pathname === '/reports'} hidden={!canAccess('/reports')} />
@@ -69,21 +69,21 @@ const App: React.FC = () => {
           <SidebarItem to="/communication" icon={MessageSquare} label="Comunicações" active={location.pathname === '/communication'} hidden={!canAccess('/communication')} />
         </nav>
 
-        <div className="px-4 py-6 text-[10px] font-black text-sidebar-foreground/40 uppercase tracking-widest mt-4 border-t border-sidebar-border">Controle e Ajuda</div>
+        <div className="px-4 py-4 text-[10px] font-bold text-sidebar-primary uppercase tracking-widest mt-2 border-t border-sidebar-border pt-6">Controle e Ajuda</div>
         <nav className="px-4 space-y-1 mb-24">
           <SidebarItem to="/logs" icon={History} label="Audit Trail (LGPD)" active={location.pathname === '/logs'} hidden={!canAccess('/logs')} />
           <SidebarItem to="/manual" icon={BookOpen} label="Manual do Sistema" active={location.pathname === '/manual'} />
           <SidebarItem to="/transparency" icon={Eye} label="Portal Público" active={false} />
         </nav>
 
-        <div className="fixed bottom-0 w-72 p-6 bg-sidebar-accent border-t border-sidebar-border">
+        <div className="absolute bottom-0 left-0 right-0 p-4 bg-sidebar-accent border-t border-sidebar-border">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-sidebar-primary to-primary flex items-center justify-center font-black text-sidebar-primary-foreground shadow-lg uppercase">{currentUser.name.substring(0,2)}</div>
-            <div className="overflow-hidden">
-              <p className="font-bold text-sidebar-foreground text-xs truncate">{currentUser.name}</p>
-              <p className="text-sidebar-primary text-[10px] uppercase font-black tracking-tighter truncate">{currentUser.role}</p>
+            <div className="w-9 h-9 rounded-xl bg-sidebar-primary flex items-center justify-center font-bold text-sm text-sidebar-primary-foreground uppercase">{currentUser.name.substring(0,2)}</div>
+            <div className="overflow-hidden flex-1">
+              <p className="font-semibold text-sidebar-foreground text-xs truncate">{currentUser.name}</p>
+              <p className="text-sidebar-primary text-[10px] uppercase font-bold tracking-tight truncate">{currentUser.role}</p>
             </div>
-            <button onClick={() => { const roles = Object.values(UserRole); const nextRole = roles[(roles.indexOf(currentUser.role) + 1) % roles.length]; setCurrentUser({ ...currentUser, role: nextRole }); }} title="Trocar Perfil (Demo Mode)" className="ml-auto text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors"><RefreshCw size={14} /></button>
+            <button onClick={() => { const roles = Object.values(UserRole); const nextRole = roles[(roles.indexOf(currentUser.role) + 1) % roles.length]; setCurrentUser({ ...currentUser, role: nextRole }); }} title="Trocar Perfil (Demo Mode)" className="text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors"><RefreshCw size={14} /></button>
           </div>
         </div>
       </aside>
