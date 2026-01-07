@@ -83,13 +83,13 @@ const Auth: React.FC = () => {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-sidebar-primary rounded-3xl shadow-2xl mb-6">
-            <ShieldCheck size={40} className="text-sidebar-primary-foreground" />
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-3xl shadow-2xl mb-6">
+            <ShieldCheck size={40} className="text-primary-foreground" />
           </div>
-          <h1 className="text-4xl font-black text-white tracking-tighter">
-            MROSC<span className="text-sidebar-primary">Digital</span>
+          <h1 className="text-4xl font-black text-foreground tracking-tighter">
+            MROSC<span className="text-primary">Digital</span>
           </h1>
-          <p className="text-white/60 text-sm font-medium mt-2">
+          <p className="text-muted-foreground text-sm font-medium mt-2">
             Sistema de Gestão de Parcerias • Unaí/MG
           </p>
         </div>
