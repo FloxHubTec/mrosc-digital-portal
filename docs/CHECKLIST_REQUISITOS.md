@@ -170,22 +170,22 @@
 
 | # | Requisito | Status | Observações |
 |---|-----------|--------|-------------|
-| 8.1 | Inscrição de propostas | ⏳ | |
-| 8.2 | Upload de documentos | ⏳ | |
-| 8.3 | Validação de habilitação | ⏳ | |
-| 8.4 | Análise técnica | ⏳ | |
-| 8.5 | Pontuação de critérios | ⏳ | |
-| 8.6 | Ranking de propostas | ⏳ | |
+| 8.1 | Inscrição de propostas | ✅ | ProposalSelection.tsx |
+| 8.2 | Upload de documentos | ⏳ | Campo documentos_urls existe |
+| 8.3 | Validação de habilitação | ✅ | Status habilitada/inabilitada |
+| 8.4 | Análise técnica | ✅ | Parecer técnico implementado |
+| 8.5 | Pontuação de critérios | ✅ | pontuacao_tecnica |
+| 8.6 | Ranking de propostas | ✅ | Ranking automático |
 | 8.7 | Atas da comissão | ⏳ | |
 | 8.8 | Publicação de resultados | ⏳ | |
 | 8.9 | Prazo para recursos | ⏳ | |
-| 8.10 | Análise de recursos | ⏳ | |
-| 8.11 | Resultado final | ⏳ | |
+| 8.10 | Análise de recursos | ✅ | Sistema de recursos |
+| 8.11 | Resultado final | ✅ | Status selecionada |
 | 8.12 | Convocação do selecionado | ⏳ | |
 | 8.13 | Diligências | ⏳ | |
-| 8.14 | Desclassificação | ⏳ | |
+| 8.14 | Desclassificação | ✅ | Status desclassificada |
 
-**Progresso: 0/14 (0%)**
+**Progresso: 8/14 (57%)**
 
 ---
 
@@ -255,17 +255,17 @@
 
 | # | Requisito | Status | Observações |
 |---|-----------|--------|-------------|
-| 12.1 | Cadastro de aditivo | ⏳ | Precisa criar tabela |
-| 12.2 | Tipo de aditivo | ⏳ | |
-| 12.3 | Justificativa | ⏳ | |
-| 12.4 | Novo valor/prazo | ⏳ | |
-| 12.5 | Vinculação com parceria | ⏳ | |
-| 12.6 | Aprovação de aditivo | ⏳ | |
-| 12.7 | Apostilamento | ⏳ | |
-| 12.8 | Histórico de alterações | ⏳ | |
+| 12.1 | Cadastro de aditivo | ✅ | Additives.tsx |
+| 12.2 | Tipo de aditivo | ✅ | aditivo/apostilamento |
+| 12.3 | Justificativa | ✅ | Campo justificativa |
+| 12.4 | Novo valor/prazo | ✅ | valor_novo, prazo_novo |
+| 12.5 | Vinculação com parceria | ✅ | partnership_id |
+| 12.6 | Aprovação de aditivo | ✅ | Fluxo aprovação/rejeição |
+| 12.7 | Apostilamento | ✅ | Tipo apostilamento |
+| 12.8 | Histórico de alterações | ✅ | Tabela additives |
 | 12.9 | Documento consolidado | ⏳ | |
 
-**Progresso: 0/9 (0%)**
+**Progresso: 8/9 (89%)**
 
 ---
 
@@ -451,21 +451,21 @@
 
 | # | Requisito | Status | Observações |
 |---|-----------|--------|-------------|
-| 21.1 | Sistema de tickets | ⏳ | |
-| 21.2 | Chat de suporte | ⏳ | |
-| 21.3 | Base de conhecimento | ⏳ | |
-| 21.4 | Treinamentos online | ⏳ | |
+| 21.1 | Sistema de tickets | ✅ | Support.tsx |
+| 21.2 | Chat de suporte | ⏳ | Tickets como alternativa |
+| 21.3 | Base de conhecimento | ✅ | knowledge_base table |
+| 21.4 | Treinamentos online | ✅ | training_events table |
 | 21.5 | Certificados | ⏳ | |
 | 21.6 | Avaliação de treinamento | ⏳ | |
-| 21.7 | Calendário de eventos | ⏳ | |
-| 21.8 | Inscrição em eventos | ⏳ | |
-| 21.9 | Material didático | ⏳ | |
-| 21.10 | Webinars | ⏳ | |
+| 21.7 | Calendário de eventos | ✅ | Lista de eventos |
+| 21.8 | Inscrição em eventos | ✅ | inscribeEvent() |
+| 21.9 | Material didático | ⏳ | Campo material_url |
+| 21.10 | Webinars | ✅ | Tipo webinar |
 | 21.11 | Fórum de discussão | ⏳ | |
 | 21.12 | Gamificação | ⏳ | |
 | 21.13 | Trilhas de aprendizado | ⏳ | |
 
-**Progresso: 0/13 (0%)**
+**Progresso: 6/13 (46%)**
 
 ---
 
@@ -488,12 +488,12 @@
 
 | # | Requisito | Status | Observações |
 |---|-----------|--------|-------------|
-| 23.1 | API ReceitaWS (CNDs) | 🔒 | Requer contrato |
-| 23.2 | Integração bancária | 🔒 | Requer contrato |
-| 23.3 | Diário Oficial | 🔒 | Requer API |
-| 23.4 | Assinatura digital | 🔒 | Requer certificado |
+| 23.1 | API ReceitaWS (CNDs) | 🔒 | Placeholder em Integrations.tsx |
+| 23.2 | Integração bancária | 🔒 | Placeholder em Integrations.tsx |
+| 23.3 | Diário Oficial | 🔒 | Placeholder em Integrations.tsx |
+| 23.4 | Assinatura digital | 🔒 | Placeholder em Integrations.tsx |
 
-**Progresso: 0/4 (0%)**
+**Progresso: 0/4 (0%) - Requer contratos externos**
 
 ---
 
@@ -520,11 +520,11 @@
 | 5. Emendas | 10 | 11 | 91% |
 | 6. PMIS | 2 | 3 | 67% |
 | 7. Chamamento | 6 | 14 | 43% |
-| 8. Seleção | 0 | 14 | 0% |
+| 8. Seleção | 8 | 14 | **57%** ⬆️ |
 | 9. Plano Trabalho | 7 | 13 | 54% |
 | 10. Notificações | 3 | 11 | 27% |
 | 11. Instrumento | 8 | 11 | 73% |
-| 12. Aditivos | 0 | 9 | 0% |
+| 12. Aditivos | 8 | 9 | **89%** ⬆️ |
 | 13. Prestação Contas | 12 | 36 | 33% |
 | 14. Monitoramento | 1 | 17 | 6% |
 | 15. Comunicação | 3 | 16 | 19% |
@@ -533,29 +533,37 @@
 | 18. Relatórios | 2 | 11 | 18% |
 | 19. Transparência | 1 | 6 | 17% |
 | 20. Pesquisa | 1 | 5 | 20% |
-| 21. Suporte | 0 | 13 | 0% |
+| 21. Suporte | 6 | 13 | **46%** ⬆️ |
 | 22. Customização | 2 | 6 | 33% |
-| 23. Integrações | 0 | 4 | 0% |
+| 23. Integrações | 0 | 4 | 0% 🔒 |
 | 24. Migração | 0 | 3 | 0% |
-| **TOTAL** | **104** | **279** | **37%** |
+| **TOTAL** | **126** | **279** | **45%** |
 
 ---
 
 ## 🎯 PRÓXIMAS PRIORIDADES
 
 ### Alta Prioridade (Core do Sistema)
-1. [ ] Completar módulo de Seleção de Propostas
-2. [ ] Implementar Aditivos e Apostilamentos
+1. [x] ~~Completar módulo de Seleção de Propostas~~ ✅ 57%
+2. [x] ~~Implementar Aditivos e Apostilamentos~~ ✅ 89%
 3. [ ] Expandir Prestação de Contas (REO completo)
 4. [ ] Adicionar mais perfis de usuário
 
 ### Média Prioridade (Funcionalidades Importantes)
 5. [ ] Upload de documentos nas OSCs
 6. [ ] Sistema de notificações completo
-7. [ ] Relatórios e exportações
+7. [ ] Relatórios e exportações (CSV/Excel/PDF parcial)
 8. [ ] Monitoramento e avaliação
 
 ### Baixa Prioridade (Melhorias)
-9. [ ] Integrações externas
-10. [ ] Suporte e capacitação
+9. [ ] Integrações externas (requer contratos)
+10. [x] ~~Suporte e capacitação~~ ✅ 46%
 11. [ ] Migração de dados
+
+---
+
+## 📅 HISTÓRICO DE ATUALIZAÇÕES
+
+| Data | Módulos Atualizados | Observações |
+|------|---------------------|-------------|
+| 07/01/2026 | Seleção, Aditivos, Suporte, Integrações | Criadas tabelas proposals, additives, support_tickets, knowledge_base, training_events |
