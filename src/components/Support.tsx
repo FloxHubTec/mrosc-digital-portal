@@ -84,6 +84,17 @@ const SupportModule: React.FC = () => {
     vagas: '',
   });
 
+  const [showInscriptionModal, setShowInscriptionModal] = useState(false);
+  const [selectedEventForInscription, setSelectedEventForInscription] = useState<any>(null);
+  const [inscriptionForm, setInscriptionForm] = useState({
+    nome: '',
+    email: '',
+    telefone: '',
+    empresa: '',
+    setor: '',
+    cargo: '',
+  });
+
   const ticketStats = getTicketStats();
   const filteredArticles = searchArticles(searchTerm);
   
@@ -153,6 +164,25 @@ const SupportModule: React.FC = () => {
       setShowEventModal(false);
       setEventForm({ titulo: '', descricao: '', tipo: 'webinar', data_inicio: '', data_fim: '', link_inscricao: '', vagas: '' });
     }
+  };
+
+  const handleEventInscription = async () => {
+    if (!inscriptionForm.nome || !inscriptionForm.email || !inscriptionForm.telefone) {
+      toast.error('Preencha todos os campos obrigatórios');
+      return;
+    }
+    if (selectedEventForInscription) {
+      await inscribeEvent(selectedEventForInscription.id);
+      toast.success(`Inscrição realizada com sucesso para ${selectedEventForInscription.titulo}!`);
+      setShowInscriptionModal(false);
+      setSelectedEventForInscription(null);
+      setInscriptionForm({ nome: '', email: '', telefone: '', empresa: '', setor: '', cargo: '' });
+    }
+  };
+
+  const openInscriptionForm = (event: any) => {
+    setSelectedEventForInscription(event);
+    setShowInscriptionModal(true);
   };
 
   const handleWhatsAppSupport = () => {
@@ -596,7 +626,7 @@ const SupportModule: React.FC = () => {
                       </div>
                       <Button 
                         size="sm" 
-                        onClick={() => inscribeEvent(event.id)}
+                        onClick={() => openInscriptionForm(event)}
                         disabled={event.vagas !== null && event.inscritos >= event.vagas}
                       >
                         Inscrever-se
@@ -607,6 +637,74 @@ const SupportModule: React.FC = () => {
               ))
             )}
           </div>
+
+          {/* Inscription Form Modal */}
+          <Dialog open={showInscriptionModal} onOpenChange={setShowInscriptionModal}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Inscrição em Evento</DialogTitle>
+                {selectedEventForInscription && (
+                  <p className="text-sm text-muted-foreground mt-1">{selectedEventForInscription.titulo}</p>
+                )}
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground">Nome *</label>
+                  <Input 
+                    placeholder="Seu nome completo" 
+                    value={inscriptionForm.nome}
+                    onChange={e => setInscriptionForm({ ...inscriptionForm, nome: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground">E-mail *</label>
+                  <Input 
+                    type="email"
+                    placeholder="seu@email.com" 
+                    value={inscriptionForm.email}
+                    onChange={e => setInscriptionForm({ ...inscriptionForm, email: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground">Telefone *</label>
+                  <Input 
+                    placeholder="(00) 00000-0000" 
+                    value={inscriptionForm.telefone}
+                    onChange={e => setInscriptionForm({ ...inscriptionForm, telefone: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground">Empresa</label>
+                  <Input 
+                    placeholder="Nome da empresa ou organização" 
+                    value={inscriptionForm.empresa}
+                    onChange={e => setInscriptionForm({ ...inscriptionForm, empresa: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground">Setor</label>
+                    <Input 
+                      placeholder="Setor de atuação" 
+                      value={inscriptionForm.setor}
+                      onChange={e => setInscriptionForm({ ...inscriptionForm, setor: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground">Cargo</label>
+                    <Input 
+                      placeholder="Seu cargo" 
+                      value={inscriptionForm.cargo}
+                      onChange={e => setInscriptionForm({ ...inscriptionForm, cargo: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <Button onClick={handleEventInscription} className="w-full">
+                  Confirmar Inscrição
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
       </Tabs>
     </div>
