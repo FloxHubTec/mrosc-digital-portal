@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Eye, FileSignature, ArrowLeft, Edit, CheckCircle, ClipboardList, AlertTriangle, X, Loader2, Calendar, DollarSign, ShieldCheck, Download } from 'lucide-react';
+import { Plus, Eye, FileSignature, ArrowLeft, Edit, CheckCircle, ClipboardList, AlertTriangle, X, Loader2, Calendar, DollarSign, ShieldCheck, Download, FileText } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { usePartnerships } from '@/hooks/usePartnerships';
 import { useOSCs } from '@/hooks/useOSCs';
@@ -164,7 +164,15 @@ const PartnershipsModule: React.FC = () => {
     );
   }
 
-  if (view === 'create') return <WorkPlanEditor onBack={() => setView('list')} />;
+  if (view === 'workplan' && selectedPartnership) {
+    return (
+      <WorkPlanEditor 
+        onBack={() => setView('detail')} 
+        partnershipId={selectedPartnership.id}
+        partnership={selectedPartnership}
+      />
+    );
+  }
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500">
@@ -312,6 +320,16 @@ const PartnershipsModule: React.FC = () => {
                     : 'N/A'}
                 </p>
               </div>
+            </div>
+            
+            {/* Botão Configurar Plano de Trabalho */}
+            <div className="mt-8 pt-8 border-t border-border">
+              <button 
+                onClick={() => setView('workplan')}
+                className="w-full py-5 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl hover:opacity-90 transition-all flex items-center justify-center gap-3"
+              >
+                <FileText size={20} /> Configurar Plano de Trabalho
+              </button>
             </div>
           </div>
         </div>
