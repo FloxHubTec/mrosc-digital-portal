@@ -45,7 +45,7 @@ const LoadingSpinner = () => (
   </div>
 );
 
-// Protected route wrapper
+// Protected route wrapper - must be used inside AuthProvider
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -62,7 +62,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const App: React.FC = () => {
+const AccessDenied = () => (
+  <div className="flex flex-col items-center justify-center h-full space-y-4 p-6 text-center">
+    <div className="p-6 bg-destructive/10 text-destructive rounded-full"><Lock size={48} /></div>
+    <h2 className="text-2xl md:text-3xl font-black text-foreground">Acesso Restrito</h2>
+    <p className="text-muted-foreground max-w-md">Seu perfil de usuário não possui permissão para acessar este módulo.</p>
+    <Link to="/" className="px-8 py-3 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest">Voltar ao Dashboard</Link>
+  </div>
+);
+
+const MainApp: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   const { user, profile, signOut, loading } = useAuth();
   const location = useLocation();
@@ -84,11 +93,7 @@ const App: React.FC = () => {
   // Show loading while checking auth
   if (loading) return <LoadingSpinner />;
 
-  // Public routes
-  if (location.pathname === '/transparency') return <TransparencyPortal />;
-  if (location.pathname === '/auth') return <Auth />;
-
-  // Protected app
+  // Protected app - redirect if not authenticated
   if (!user) {
     navigate('/auth');
     return null;
@@ -217,27 +222,26 @@ const App: React.FC = () => {
   );
 };
 
-const AccessDenied = () => (
-  <div className="flex flex-col items-center justify-center h-full space-y-4 p-6 text-center">
-    <div className="p-6 bg-destructive/10 text-destructive rounded-full"><Lock size={48} /></div>
-    <h2 className="text-2xl md:text-3xl font-black text-foreground">Acesso Restrito</h2>
-    <p className="text-muted-foreground max-w-md">Seu perfil de usuário não possui permissão para acessar este módulo.</p>
-    <Link to="/" className="px-8 py-3 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest">Voltar ao Dashboard</Link>
-  </div>
-);
+// Inner router component that uses auth context
+const AppRoutes: React.FC = () => {
+  return (
+    <Routes>
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/transparency" element={<TransparencyPortal />} />
+      <Route path="/*" element={
+        <ProtectedRoute>
+          <MainApp />
+        </ProtectedRoute>
+      } />
+    </Routes>
+  );
+};
 
+// Main App wrapper - AuthProvider MUST wrap the Router to provide context to all components
 const AppWrapper = () => (
   <HashRouter>
     <AuthProvider>
-      <Routes>
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/transparency" element={<TransparencyPortal />} />
-        <Route path="/*" element={
-          <ProtectedRoute>
-            <App />
-          </ProtectedRoute>
-        } />
-      </Routes>
+      <AppRoutes />
     </AuthProvider>
   </HashRouter>
 );
