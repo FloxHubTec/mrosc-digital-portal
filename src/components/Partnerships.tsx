@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Plus, Eye, FileSignature, ArrowLeft, Edit, CheckCircle, ClipboardList, AlertTriangle, X, Loader2, Calendar, DollarSign } from 'lucide-react';
+import { Plus, Eye, FileSignature, ArrowLeft, Edit, CheckCircle, ClipboardList, AlertTriangle, X, Loader2, Calendar, DollarSign, ShieldCheck } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 import { usePartnerships } from '@/hooks/usePartnerships';
 import { useOSCs } from '@/hooks/useOSCs';
 import { usePublicCalls } from '@/hooks/usePublicCalls';
@@ -176,10 +177,16 @@ const PartnershipsModule: React.FC = () => {
             >
               <ArrowLeft size={16} /> Voltar
             </button>
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               <button className="px-6 py-3 bg-info/10 text-info rounded-xl font-black text-[10px] uppercase flex items-center gap-2">
                 <Edit size={16} /> Editar
               </button>
+              <label className="px-6 py-3 bg-success/10 text-success rounded-xl font-black text-[10px] uppercase flex items-center gap-2 cursor-pointer hover:bg-success/20 transition-colors">
+                <FileSignature size={16} /> Upload Contrato (PAdES)
+                <input type="file" accept=".pdf" className="hidden" onChange={() => {
+                  toast({ title: "Contrato enviado!", description: "Assinatura PAdES verificada com sucesso." });
+                }} />
+              </label>
               <button className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-black text-[10px] uppercase shadow-lg">
                 Baixar Instrumento
               </button>

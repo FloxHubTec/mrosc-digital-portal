@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Megaphone, Plus, Search, FileText, Filter, ChevronRight, Clock, X, Loader2, CheckCircle, ChevronDown } from 'lucide-react';
 import { usePublicCalls } from '@/hooks/usePublicCalls';
+import { useLabels } from '@/contexts/LabelContext';
 
 const ChamamentoModule: React.FC = () => {
   const { publicCalls, loading, createPublicCall } = usePublicCalls();
+  const { getLabel } = useLabels();
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
@@ -27,7 +29,21 @@ const ChamamentoModule: React.FC = () => {
     { value: 'encerrado', label: 'Encerrado' },
   ];
 
-  const filteredCalls = publicCalls.filter(c => {
+  // Auto-calculate status based on data_fim
+  const processedCalls = useMemo(() => {
+    const now = new Date();
+    return publicCalls.map(c => {
+      if (c.data_fim) {
+        const endDate = new Date(c.data_fim);
+        if (endDate < now && c.status !== 'encerrado' && c.status !== 'homologado') {
+          return { ...c, status: 'encerrado' };
+        }
+      }
+      return c;
+    });
+  }, [publicCalls]);
+
+  const filteredCalls = processedCalls.filter(c => {
     const matchesSearch = c.numero_edital.toLowerCase().includes(search.toLowerCase()) ||
                           c.objeto.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !filterStatus || c.status === filterStatus;
@@ -75,9 +91,9 @@ const ChamamentoModule: React.FC = () => {
   };
 
   const stats = [
-    { label: 'Editais Ativos', value: publicCalls.filter(c => c.status === 'aberto').length.toString().padStart(2, '0') },
-    { label: 'Em Análise', value: publicCalls.filter(c => c.status === 'em_julgamento').length.toString().padStart(2, '0') },
-    { label: 'Homologados', value: publicCalls.filter(c => c.status === 'homologado').length.toString().padStart(2, '0') },
+    { label: `${getLabel('edital')}s Ativos`, value: processedCalls.filter(c => c.status === 'aberto').length.toString().padStart(2, '0') },
+    { label: 'Em Análise', value: processedCalls.filter(c => c.status === 'em_julgamento').length.toString().padStart(2, '0') },
+    { label: 'Homologados', value: processedCalls.filter(c => c.status === 'homologado').length.toString().padStart(2, '0') },
   ];
 
   if (loading) {
@@ -96,7 +112,7 @@ const ChamamentoModule: React.FC = () => {
             <Megaphone size={14} />
             <span>Processos de Seleção Pública</span>
           </div>
-          <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tighter">Chamamentos e Editais</h2>
+          <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tighter">{getLabel('chamamento')}s e {getLabel('edital')}s</h2>
           <p className="text-muted-foreground font-medium">Gestão do fluxo seletivo conforme Art. 23 da Lei 13.019/14.</p>
         </div>
         <button 
@@ -104,7 +120,7 @@ const ChamamentoModule: React.FC = () => {
           className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 shadow-xl shadow-primary/20 flex items-center space-x-2 transition-all active:scale-95"
         >
           <Plus size={18} />
-          <span>Novo Edital</span>
+          <span>Novo {getLabel('edital')}</span>
         </button>
       </header>
 

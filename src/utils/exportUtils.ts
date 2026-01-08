@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-export type ExportFormat = 'csv' | 'excel' | 'pdf';
+export type ExportFormat = 'csv' | 'excel' | 'pdf' | 'sicom';
 
 interface ExportOptions {
   filename: string;
@@ -93,6 +93,26 @@ export const exportToPDF = ({ filename, title, headers, data }: ExportOptions) =
   doc.save(`${filename}.pdf`);
 };
 
+export const exportToSICOM = ({ filename, headers, data }: ExportOptions) => {
+  // SICOM format: uppercase headers, pipe-separated or semicolon-separated
+  const sicomHeaders = headers.map(h => h.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '_'));
+  
+  const csvContent = [
+    sicomHeaders.join(';'),
+    ...data.map(row => row.map(cell => {
+      const cellStr = String(cell).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return `"${cellStr}"`;
+    }).join(';'))
+  ].join('\r\n');
+  
+  const BOM = '\uFEFF';
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${filename}_SICOM.csv`;
+  link.click();
+};
+
 export const exportData = (format: ExportFormat, options: ExportOptions) => {
   switch (format) {
     case 'csv':
@@ -103,6 +123,9 @@ export const exportData = (format: ExportFormat, options: ExportOptions) => {
       break;
     case 'pdf':
       exportToPDF(options);
+      break;
+    case 'sicom':
+      exportToSICOM(options);
       break;
   }
 };
