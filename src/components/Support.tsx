@@ -13,12 +13,13 @@ import { UserRole } from '@/types';
 import { 
   HelpCircle, BookOpen, Calendar, Search, Plus, MessageCircle, 
   CheckCircle, Clock, XCircle, Eye, Send, Video, FileText,
-  Users, Phone
+  Users, Phone, GraduationCap
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { mockKnowledgeBase, mockTrainingEvents, mockTickets, openWhatsApp } from '@/data/mockData';
+import { Label } from '@/components/ui/label';
 
 const TicketStatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
@@ -94,6 +95,25 @@ const SupportModule: React.FC = () => {
     setor: '',
     cargo: '',
   });
+
+  // Training Request State
+  const [showTrainingModal, setShowTrainingModal] = useState(false);
+  const [trainingForm, setTrainingForm] = useState({
+    tema: '',
+    dataPreferencial: '',
+    publicoAlvo: 'gestores',
+  });
+
+  const handleTrainingRequest = () => {
+    if (!trainingForm.tema || !trainingForm.dataPreferencial) {
+      toast.error('Preencha todos os campos obrigatórios');
+      return;
+    }
+    const protocolo = `TREINO-${Date.now().toString(36).toUpperCase()}`;
+    toast.success(`Solicitação registrada! Protocolo: ${protocolo}`);
+    setShowTrainingModal(false);
+    setTrainingForm({ tema: '', dataPreferencial: '', publicoAlvo: 'gestores' });
+  };
 
   const ticketStats = getTicketStats();
   const filteredArticles = searchArticles(searchTerm);
@@ -265,6 +285,80 @@ const SupportModule: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Training Section */}
+      <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-purple-600 rounded-2xl">
+                <GraduationCap size={28} className="text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-purple-800 dark:text-purple-200">Treinamento e Capacitação</h3>
+                <p className="text-sm text-purple-600 dark:text-purple-400">
+                  Solicite treinamentos personalizados para sua equipe ou OSC
+                </p>
+              </div>
+            </div>
+            <Button 
+              onClick={() => setShowTrainingModal(true)}
+              className="bg-purple-700 hover:bg-purple-800 text-white gap-2"
+            >
+              <GraduationCap size={16} />
+              Solicitar Agendamento de Treinamento
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Training Request Modal */}
+      <Dialog open={showTrainingModal} onOpenChange={setShowTrainingModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black flex items-center gap-2">
+              <GraduationCap size={20} className="text-purple-600" />
+              Solicitar Treinamento
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label className="text-xs font-bold mb-2 block">Tema do Treinamento *</Label>
+              <Input 
+                placeholder="Ex: Prestação de Contas MROSC" 
+                value={trainingForm.tema}
+                onChange={e => setTrainingForm({ ...trainingForm, tema: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label className="text-xs font-bold mb-2 block">Data Preferencial *</Label>
+              <Input 
+                type="date"
+                value={trainingForm.dataPreferencial}
+                onChange={e => setTrainingForm({ ...trainingForm, dataPreferencial: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label className="text-xs font-bold mb-2 block">Público Alvo *</Label>
+              <Select value={trainingForm.publicoAlvo} onValueChange={v => setTrainingForm({ ...trainingForm, publicoAlvo: v })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gestores">Gestores Públicos</SelectItem>
+                  <SelectItem value="osc">Representantes de OSC</SelectItem>
+                  <SelectItem value="ambos">Gestores e OSC</SelectItem>
+                  <SelectItem value="tecnicos">Técnicos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleTrainingRequest} className="w-full gap-2 bg-purple-700 hover:bg-purple-800">
+              <Send size={16} />
+              Enviar Solicitação
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Tabs - OSC sees only Conhecimento and Eventos */}
       <Tabs defaultValue={isOSC ? "knowledge" : "tickets"} className="space-y-4">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BarChartHorizontal, Download, Filter, FilePieChart, FileSpreadsheet, Database, ArrowUpRight, ShieldCheck, TrendingUp, FileText, X, ChevronDown } from 'lucide-react';
+import { BarChartHorizontal, Download, Filter, FilePieChart, FileSpreadsheet, Database, ArrowUpRight, ShieldCheck, TrendingUp, FileText, X, ChevronDown, FileCheck2, Calculator } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -11,14 +11,19 @@ import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { usePartnerships } from '@/hooks/usePartnerships';
 
 type ExportFormat = 'excel' | 'csv' | 'pdf' | 'doc';
 
 const ReportsModule: React.FC = () => {
+  const { partnerships } = usePartnerships();
   const [showFilters, setShowFilters] = useState(false);
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<number | null>(null);
+  const [showREOModal, setShowREOModal] = useState(false);
+  const [showREFFModal, setShowREFFModal] = useState(false);
+  const [selectedPartnershipId, setSelectedPartnershipId] = useState<string>('');
   
   // Filters state
   const [filterPeriod, setFilterPeriod] = useState('all');
@@ -36,6 +41,150 @@ const ReportsModule: React.FC = () => {
     metas: true,
     repasses: true,
   });
+
+  // Generate REO PDF
+  const generateREOPDF = () => {
+    const selectedPartnership = partnerships.find(p => p.id === selectedPartnershipId);
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PREFEITURA MUNICIPAL DE UNAÍ', doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text('Estado de Minas Gerais', doc.internal.pageSize.getWidth() / 2, 26, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('RELATÓRIO DE EXECUÇÃO DO OBJETO - REO', doc.internal.pageSize.getWidth() / 2, 38, { align: 'center' });
+    
+    // Partnership info
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Termo de Parceria: ${selectedPartnership?.numero_termo || 'N/A'}`, 14, 50);
+    doc.text(`OSC: ${selectedPartnership?.osc?.razao_social || 'N/A'}`, 14, 56);
+    doc.text(`CNPJ: ${selectedPartnership?.osc?.cnpj || 'N/A'}`, 14, 62);
+    doc.text(`Vigência: ${selectedPartnership?.vigencia_inicio || 'N/A'} a ${selectedPartnership?.vigencia_fim || 'N/A'}`, 14, 68);
+    doc.text(`Valor Total: R$ ${selectedPartnership?.valor_repassado?.toLocaleString('pt-BR') || '0,00'}`, 14, 74);
+    doc.text(`Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}`, 14, 80);
+    
+    // Mock REO data
+    const reoData = [
+      ['1', 'Capacitação de beneficiários', 'Realizar 10 oficinas', '10 oficinas', '100%'],
+      ['2', 'Aquisição de materiais', 'Comprar equipamentos', '80% adquirido', '80%'],
+      ['3', 'Atendimentos diretos', 'Atender 200 pessoas', '180 atendidas', '90%'],
+      ['4', 'Eventos comunitários', 'Realizar 4 eventos', '3 realizados', '75%'],
+    ];
+    
+    autoTable(doc, {
+      head: [['Meta', 'Descrição', 'Etapa Prevista', 'Etapa Executada', '% Concluído']],
+      body: reoData,
+      startY: 90,
+      styles: { fontSize: 9, cellPadding: 4 },
+      headStyles: { fillColor: [13, 148, 136], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [240, 253, 250] },
+    });
+    
+    // Footer
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.text(`Página ${i} de ${pageCount} • Sistema MROSC Unaí/MG`, doc.internal.pageSize.getWidth() / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+    }
+    
+    doc.save(`REO_${selectedPartnership?.numero_termo || 'parceria'}_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('REO gerado com sucesso!');
+    setShowREOModal(false);
+  };
+
+  // Generate REFF PDF
+  const generateREFFPDF = () => {
+    const selectedPartnership = partnerships.find(p => p.id === selectedPartnershipId);
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PREFEITURA MUNICIPAL DE UNAÍ', doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text('Estado de Minas Gerais', doc.internal.pageSize.getWidth() / 2, 26, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('RELATÓRIO DE EXECUÇÃO FÍSICO-FINANCEIRA - REFF', doc.internal.pageSize.getWidth() / 2, 38, { align: 'center' });
+    
+    // Partnership info
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Termo de Parceria: ${selectedPartnership?.numero_termo || 'N/A'}`, 14, 50);
+    doc.text(`OSC: ${selectedPartnership?.osc?.razao_social || 'N/A'}`, 14, 56);
+    doc.text(`CNPJ: ${selectedPartnership?.osc?.cnpj || 'N/A'}`, 14, 62);
+    doc.text(`Valor do Repasse: R$ ${selectedPartnership?.valor_repassado?.toLocaleString('pt-BR') || '0,00'}`, 14, 68);
+    doc.text(`Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}`, 14, 74);
+    
+    // Receitas
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('RECEITAS', 14, 86);
+    
+    const receitasData = [
+      ['Repasse Inicial', 'R$ 150.000,00'],
+      ['Repasse 2ª Parcela', 'R$ 50.000,00'],
+      ['Rendimento de Aplicação', 'R$ 1.250,00'],
+      ['TOTAL RECEITAS', 'R$ 201.250,00'],
+    ];
+    
+    autoTable(doc, {
+      head: [['Descrição', 'Valor']],
+      body: receitasData,
+      startY: 90,
+      styles: { fontSize: 9, cellPadding: 4 },
+      headStyles: { fillColor: [13, 148, 136], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [240, 253, 250] },
+    });
+    
+    // Despesas
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DESPESAS', 14, finalY);
+    
+    const despesasData = [
+      ['Material de Consumo', 'R$ 25.000,00'],
+      ['Serviços de Terceiros', 'R$ 80.000,00'],
+      ['Equipamentos', 'R$ 45.000,00'],
+      ['Recursos Humanos', 'R$ 40.000,00'],
+      ['TOTAL DESPESAS', 'R$ 190.000,00'],
+    ];
+    
+    autoTable(doc, {
+      head: [['Descrição', 'Valor']],
+      body: despesasData,
+      startY: finalY + 4,
+      styles: { fontSize: 9, cellPadding: 4 },
+      headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [254, 242, 242] },
+    });
+    
+    // Saldo
+    const finalY2 = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SALDO EM CONTA: R$ 11.250,00', 14, finalY2);
+    
+    // Footer
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.text(`Página ${i} de ${pageCount} • Sistema MROSC Unaí/MG`, doc.internal.pageSize.getWidth() / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+    }
+    
+    doc.save(`REFF_${selectedPartnership?.numero_termo || 'parceria'}_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('REFF gerado com sucesso!');
+    setShowREFFModal(false);
+  };
 
   const reportTypes = [
     { title: 'Relatório Técnico Consolidado', desc: 'Análise detalhada do cumprimento de metas e objeto.', icon: TrendingUp, color: 'text-info', bg: 'bg-info/10' },
@@ -238,6 +387,125 @@ const ReportsModule: React.FC = () => {
           <ChevronDown size={14} className={`transition-transform ${showFilters ? 'rotate-180' : ''}`} />
         </button>
       </header>
+
+      {/* Official Reports Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-950 dark:to-teal-900 border-teal-200 dark:border-teal-800">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-4 bg-teal-600 rounded-2xl">
+                <FileCheck2 size={28} className="text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-teal-800 dark:text-teal-200">Relatório REO</h3>
+                <p className="text-sm text-teal-600 dark:text-teal-400">Execução do Objeto</p>
+              </div>
+            </div>
+            <p className="text-sm text-teal-700 dark:text-teal-300 mb-4">
+              Documento oficial que demonstra o cumprimento das metas e etapas previstas no plano de trabalho.
+            </p>
+            <Button 
+              onClick={() => setShowREOModal(true)} 
+              className="w-full bg-teal-700 hover:bg-teal-800 text-white gap-2"
+            >
+              <FileCheck2 size={16} />
+              Gerar REO (Execução do Objeto)
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-4 bg-blue-600 rounded-2xl">
+                <Calculator size={28} className="text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-blue-800 dark:text-blue-200">Relatório REFF</h3>
+                <p className="text-sm text-blue-600 dark:text-blue-400">Físico-Financeiro</p>
+              </div>
+            </div>
+            <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
+              Documento oficial que apresenta receitas, despesas e saldo financeiro da parceria.
+            </p>
+            <Button 
+              onClick={() => setShowREFFModal(true)} 
+              className="w-full bg-blue-700 hover:bg-blue-800 text-white gap-2"
+            >
+              <Calculator size={16} />
+              Gerar REFF (Físico-Financeiro)
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* REO Modal */}
+      <Dialog open={showREOModal} onOpenChange={setShowREOModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black">Gerar REO - Execução do Objeto</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label className="text-xs font-bold mb-2 block">Selecione a Parceria</Label>
+              <Select value={selectedPartnershipId} onValueChange={setSelectedPartnershipId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolha uma parceria..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {partnerships.map(p => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.numero_termo} - {p.osc?.razao_social}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button 
+              onClick={generateREOPDF} 
+              disabled={!selectedPartnershipId}
+              className="w-full gap-2"
+            >
+              <Download size={16} />
+              Gerar PDF do REO
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* REFF Modal */}
+      <Dialog open={showREFFModal} onOpenChange={setShowREFFModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black">Gerar REFF - Físico-Financeiro</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label className="text-xs font-bold mb-2 block">Selecione a Parceria</Label>
+              <Select value={selectedPartnershipId} onValueChange={setSelectedPartnershipId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolha uma parceria..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {partnerships.map(p => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.numero_termo} - {p.osc?.razao_social}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button 
+              onClick={generateREFFPDF} 
+              disabled={!selectedPartnershipId}
+              className="w-full gap-2"
+            >
+              <Download size={16} />
+              Gerar PDF do REFF
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Global Filters Panel */}
       {showFilters && (

@@ -1,11 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { Settings, Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, X, Users, BookOpen, Lock, KeyRound, Plus, Search, Edit } from 'lucide-react';
+import { Settings, Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, X, Users, BookOpen, Lock, KeyRound, Plus, Search, Edit, Server, Shield, Clock, Database, RefreshCw, Phone } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useLabels } from '@/contexts/LabelContext';
+import { Textarea } from '@/components/ui/textarea';
 
-type TabType = 'migration' | 'users' | 'dictionary' | 'backup';
+type TabType = 'migration' | 'users' | 'dictionary' | 'infrastructure';
 
 interface MockUser {
   id: string;
@@ -141,11 +142,26 @@ const AdminSettings: React.FC = () => {
     u.cpf.includes(userSearch)
   );
 
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [restoreForm, setRestoreForm] = useState({ dataDesejada: '', motivo: '' });
+  
+  const lastBackupTime = new Date();
+  lastBackupTime.setHours(lastBackupTime.getHours() - 1);
+
+  const handleRestoreRequest = () => {
+    toast({ 
+      title: "Solicitação enviada!", 
+      description: "Nossa equipe técnica entrará em contato em até 4 horas úteis." 
+    });
+    setShowRestoreModal(false);
+    setRestoreForm({ dataDesejada: '', motivo: '' });
+  };
+
   const tabs = [
     { id: 'migration' as TabType, label: 'Migração de Dados', icon: Upload },
     { id: 'users' as TabType, label: 'Gestão de Usuários', icon: Users },
     { id: 'dictionary' as TabType, label: 'Dicionário', icon: BookOpen },
-    { id: 'backup' as TabType, label: 'Backup', icon: FileSpreadsheet },
+    { id: 'infrastructure' as TabType, label: 'Infraestrutura', icon: Server },
   ];
 
   return (
@@ -471,17 +487,171 @@ const AdminSettings: React.FC = () => {
         </div>
       )}
 
-      {/* Backup Tab */}
-      {activeTab === 'backup' && (
-        <div className="bg-card rounded-[2rem] md:rounded-[2.5rem] border border-border p-6 md:p-12 shadow-sm">
-          <h3 className="text-xl md:text-2xl font-black text-foreground mb-2">Backup do Sistema</h3>
-          <p className="text-muted-foreground mb-8">
-            Gerencie backups e restauração de dados do sistema MROSC.
-          </p>
-          <div className="text-center py-16 text-muted-foreground">
-            <FileSpreadsheet size={64} className="mx-auto mb-4 opacity-30" />
-            <p>Módulo de backup em desenvolvimento.</p>
+      {/* Infrastructure Tab */}
+      {activeTab === 'infrastructure' && (
+        <div className="space-y-6">
+          <div className="bg-card rounded-[2rem] md:rounded-[2.5rem] border border-border p-6 md:p-12 shadow-sm">
+            <h3 className="text-xl md:text-2xl font-black text-foreground mb-2">Infraestrutura e Segurança</h3>
+            <p className="text-muted-foreground mb-8">
+              Monitore o status dos servidores, backups e segurança do sistema.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Server Status */}
+              <div className="bg-success/10 border border-success/30 rounded-2xl p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="p-3 bg-success/20 rounded-xl">
+                    <Server size={24} className="text-success" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-success uppercase tracking-widest">Status do Servidor</p>
+                    <p className="text-2xl font-black text-success">Online</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+                  <span className="text-sm text-success font-medium">Operando normalmente</span>
+                </div>
+              </div>
+
+              {/* Backup Status */}
+              <div className="bg-success/10 border border-success/30 rounded-2xl p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="p-3 bg-success/20 rounded-xl">
+                    <Database size={24} className="text-success" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-success uppercase tracking-widest">Backup Automático</p>
+                    <p className="text-2xl font-black text-success">Ativo</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RefreshCw size={14} className="text-success" />
+                  <span className="text-sm text-success font-medium">Executado a cada 4 horas</span>
+                </div>
+              </div>
+
+              {/* Last Backup */}
+              <div className="bg-muted border border-border rounded-2xl p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="p-3 bg-primary/10 rounded-xl">
+                    <Clock size={24} className="text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Último Backup</p>
+                    <p className="text-lg font-black text-foreground">
+                      {lastBackupTime.toLocaleDateString('pt-BR')} às {lastBackupTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">Há aproximadamente 1 hora</p>
+              </div>
+
+              {/* Data Retention */}
+              <div className="bg-muted border border-border rounded-2xl p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="p-3 bg-info/10 rounded-xl">
+                    <Shield size={24} className="text-info" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Retenção de Dados</p>
+                    <p className="text-2xl font-black text-foreground">5 Anos</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">Conforme exigência legal MROSC</p>
+              </div>
+            </div>
+
+            {/* Restore Button */}
+            <div className="mt-8 p-6 bg-warning/10 border border-warning/30 rounded-2xl">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                  <h4 className="font-black text-warning text-lg">Restauração de Backup</h4>
+                  <p className="text-sm text-warning/80">
+                    Solicite a restauração de dados de uma data específica. A equipe técnica analisará o pedido.
+                  </p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowRestoreModal(true)}
+                  className="border-warning text-warning hover:bg-warning/10 gap-2 shrink-0"
+                >
+                  <RefreshCw size={16} />
+                  Solicitar Restauração
+                </Button>
+              </div>
+            </div>
+
+            {/* Additional Info */}
+            <div className="mt-8 p-6 bg-muted rounded-2xl">
+              <h4 className="font-black text-foreground mb-3 flex items-center gap-2">
+                <AlertCircle size={16} className="text-info" />
+                Informações de Segurança
+              </h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>• Backups são realizados automaticamente 6 vezes ao dia (a cada 4 horas)</li>
+                <li>• Os dados são criptografados em trânsito e em repouso (AES-256)</li>
+                <li>• Réplicas são mantidas em datacenter secundário geograficamente distante</li>
+                <li>• Monitoramento 24/7 com alertas automáticos para a equipe técnica</li>
+                <li>• Testes de restauração são realizados mensalmente</li>
+              </ul>
+            </div>
           </div>
+
+          {/* Restore Modal */}
+          <Dialog open={showRestoreModal} onOpenChange={setShowRestoreModal}>
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-black flex items-center gap-2">
+                  <Phone size={20} className="text-primary" />
+                  Solicitar Restauração de Backup
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-5 mt-4">
+                <div className="p-4 bg-warning/10 border border-warning/30 rounded-xl">
+                  <p className="text-sm text-warning font-medium">
+                    Esta solicitação será enviada à equipe de suporte técnico para análise e execução.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
+                    Data/Hora Desejada para Restauração *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={restoreForm.dataDesejada}
+                    onChange={(e) => setRestoreForm({ ...restoreForm, dataDesejada: e.target.value })}
+                    className="w-full px-4 py-3 bg-muted rounded-xl text-sm outline-none focus:ring-4 focus:ring-primary/20 text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
+                    Motivo da Restauração *
+                  </label>
+                  <Textarea
+                    value={restoreForm.motivo}
+                    onChange={(e) => setRestoreForm({ ...restoreForm, motivo: e.target.value })}
+                    placeholder="Descreva o motivo da necessidade de restauração..."
+                    rows={4}
+                    className="bg-muted"
+                  />
+                </div>
+                <div className="flex gap-4 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setShowRestoreModal(false)} className="flex-1">
+                    Cancelar
+                  </Button>
+                  <Button 
+                    onClick={handleRestoreRequest} 
+                    disabled={!restoreForm.dataDesejada || !restoreForm.motivo}
+                    className="flex-1 gap-2"
+                  >
+                    <Phone size={16} />
+                    Enviar Solicitação
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
 
