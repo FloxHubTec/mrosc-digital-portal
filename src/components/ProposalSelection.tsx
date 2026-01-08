@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useProposals, Proposal } from '@/hooks/useProposals';
 import { usePublicCalls } from '@/hooks/usePublicCalls';
 import { useOSCs } from '@/hooks/useOSCs';
+import { supabase } from '@/integrations/supabase/client';
 import ExportDropdown from '@/components/ui/ExportDropdown';
 import { exportData, exportToPDF } from '@/utils/exportUtils';
 import jsPDF from 'jspdf';
@@ -18,11 +19,13 @@ import autoTable from 'jspdf-autotable';
 import { 
   ClipboardCheck, FileText, Users, Trophy, AlertCircle, Search, 
   Plus, Star, ThumbsUp, ThumbsDown, Eye, CheckCircle, Upload,
-  XCircle, Clock, BarChart3, Mail, FileDown, Megaphone, Gavel
+  XCircle, Clock, BarChart3, Mail, FileDown, Megaphone, Gavel,
+  Trash2, File, Loader2, ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Progress } from '@/components/ui/progress';
 
 const StatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, { color: string; label: string }> = {
@@ -53,7 +56,11 @@ const ProposalSelectionModule: React.FC = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showDiligenciaModal, setShowDiligenciaModal] = useState(false);
   const [showAtaModal, setShowAtaModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     public_call_id: '',
@@ -140,6 +147,69 @@ const ProposalSelectionModule: React.FC = () => {
     }
     await calculateRankings(callFilter);
     toast.success('Rankings calculados e resultado publicado!');
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || !selectedProposal) return;
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const uploadedUrls: string[] = [...(selectedProposal.documentos_urls || [])];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${selectedProposal.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('documents')
+          .upload(`proposals/${fileName}`, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('documents')
+          .getPublicUrl(`proposals/${fileName}`);
+
+        uploadedUrls.push(publicUrl);
+        setUploadProgress(((i + 1) / files.length) * 100);
+      }
+
+      await updateProposal(selectedProposal.id, { 
+        documentos_urls: uploadedUrls as any 
+      });
+
+      toast.success(`${files.length} documento(s) enviado(s) com sucesso!`);
+      setSelectedProposal({ ...selectedProposal, documentos_urls: uploadedUrls });
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error('Erro ao enviar documento: ' + error.message);
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteDocument = async (url: string) => {
+    if (!selectedProposal) return;
+    
+    try {
+      const newUrls = selectedProposal.documentos_urls.filter(u => u !== url);
+      await updateProposal(selectedProposal.id, { documentos_urls: newUrls as any });
+      setSelectedProposal({ ...selectedProposal, documentos_urls: newUrls });
+      toast.success('Documento removido!');
+    } catch (error: any) {
+      toast.error('Erro ao remover documento');
+    }
+  };
+
+  const getFileNameFromUrl = (url: string) => {
+    const parts = url.split('/');
+    return parts[parts.length - 1];
   };
 
   const generateAta = () => {
@@ -555,6 +625,69 @@ const ProposalSelectionModule: React.FC = () => {
                   )}
                 </div>
               )}
+              
+              {/* Documentos */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-bold text-muted-foreground">Documentos Anexados</p>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    {uploading ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Upload size={14} className="mr-1" />}
+                    Enviar
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </div>
+                
+                {uploading && (
+                  <div className="mb-3">
+                    <Progress value={uploadProgress} className="h-2" />
+                    <p className="text-xs text-muted-foreground mt-1">Enviando... {Math.round(uploadProgress)}%</p>
+                  </div>
+                )}
+                
+                {selectedProposal.documentos_urls && selectedProposal.documentos_urls.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedProposal.documentos_urls.map((url, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2 bg-muted rounded-lg text-sm">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <File size={14} className="text-primary shrink-0" />
+                          <span className="truncate">{getFileNameFromUrl(url)}</span>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button size="sm" variant="ghost" asChild>
+                            <a href={url} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink size={14} />
+                            </a>
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => handleDeleteDocument(url)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic p-3 bg-muted rounded-lg text-center">
+                    Nenhum documento anexado
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>

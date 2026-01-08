@@ -171,7 +171,7 @@
 | # | Requisito | Status | Observações |
 |---|-----------|--------|-------------|
 | 8.1 | Inscrição de propostas | ✅ | ProposalSelection.tsx |
-| 8.2 | Upload de documentos | ⏳ | Campo documentos_urls existe |
+| 8.2 | Upload de documentos | ✅ | Supabase Storage + UI completa |
 | 8.3 | Validação de habilitação | ✅ | Status habilitada/inabilitada |
 | 8.4 | Análise técnica | ✅ | Parecer técnico implementado |
 | 8.5 | Pontuação de critérios | ✅ | pontuacao_tecnica |
@@ -185,7 +185,7 @@
 | 8.13 | Diligências | ✅ | Modal de diligência |
 | 8.14 | Desclassificação | ✅ | Status desclassificada |
 
-**Progresso: 13/14 (93%)**
+**Progresso: 14/14 (100%)** ✅
 
 ---
 
