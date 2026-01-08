@@ -1,9 +1,11 @@
-import React, { useState, useRef } from 'react';
-import { ClipboardList, Camera, CheckCircle2, XCircle, CreditCard, Plus, Upload, Loader2, X, AlertTriangle, FileText, DollarSign, Image, Trash2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ClipboardList, Camera, CheckCircle2, XCircle, CreditCard, Plus, Upload, Loader2, X, AlertTriangle, FileText, DollarSign, Image, Trash2, Target, TrendingUp } from 'lucide-react';
 import { useTransactions } from '@/hooks/useTransactions';
 import { usePartnerships } from '@/hooks/usePartnerships';
+import { useWorkPlans, WorkPlanMeta } from '@/hooks/useWorkPlans';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { Progress } from '@/components/ui/progress';
 
 interface EvidenceFile {
   id: string;
@@ -12,11 +14,17 @@ interface EvidenceFile {
   type: 'antes' | 'durante' | 'depois';
 }
 
+interface MetaProgress {
+  metaId: string;
+  executado: number;
+}
+
 const AccountabilityModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'REO' | 'REFF'>('REO');
   const [selectedPartnershipId, setSelectedPartnershipId] = useState<string>('');
   const { partnerships, loading: loadingPartnerships } = usePartnerships();
   const { transactions, loading, totals, createTransaction, approveTransaction, rejectTransaction, refetch } = useTransactions(selectedPartnershipId || undefined);
+  const { workPlan, loading: loadingWorkPlan } = useWorkPlans(selectedPartnershipId || undefined);
   
   const [showModal, setShowModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
@@ -40,6 +48,9 @@ const AccountabilityModule: React.FC = () => {
   // Evidence files state
   const [evidenceFiles, setEvidenceFiles] = useState<EvidenceFile[]>([]);
   const [currentEvidenceType, setCurrentEvidenceType] = useState<'antes' | 'durante' | 'depois'>('antes');
+  
+  // Meta progress state (simulated - in production would come from DB)
+  const [metaProgress, setMetaProgress] = useState<MetaProgress[]>([]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -336,12 +347,140 @@ const AccountabilityModule: React.FC = () => {
                     )}
                   </div>
                   <div className="space-y-6">
-                    <h4 className="text-lg md:text-xl font-black text-foreground">Metas da Parceria</h4>
-                    <div className="text-center py-8 text-muted-foreground">
-                      <FileText className="mx-auto mb-3 opacity-30" size={40} />
-                      <p className="text-sm">Metas serão exibidas após configuração do Plano de Trabalho.</p>
-                      <p className="text-xs mt-2">Configure em: <span className="text-primary font-bold">Parcerias → Selecionar Parceria → Plano de Trabalho</span></p>
-                    </div>
+                    <h4 className="text-lg md:text-xl font-black text-foreground flex items-center gap-3">
+                      <Target size={20} className="text-primary" />
+                      Metas da Parceria
+                    </h4>
+                    
+                    {loadingWorkPlan ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                      </div>
+                    ) : !workPlan || workPlan.status !== 'aprovado' ? (
+                      <div className="text-center py-8 text-muted-foreground border-2 border-dashed border-border rounded-2xl">
+                        <FileText className="mx-auto mb-3 opacity-30" size={40} />
+                        <p className="text-sm font-medium">
+                          {workPlan ? `Plano de Trabalho em status: ${workPlan.status}` : 'Nenhum Plano de Trabalho configurado'}
+                        </p>
+                        <p className="text-xs mt-2">
+                          {workPlan?.status === 'enviado' 
+                            ? 'Aguardando aprovação do gestor.' 
+                            : 'Configure em: Parcerias → Selecionar Parceria → Plano de Trabalho'}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                        {workPlan.metas.length === 0 ? (
+                          <p className="text-muted-foreground text-sm">Nenhuma meta definida no plano.</p>
+                        ) : (
+                          workPlan.metas.map((meta, idx) => {
+                            const progress = metaProgress.find(p => p.metaId === meta.id);
+                            const executado = progress?.executado || 0;
+                            const percentual = meta.meta_quantidade > 0 
+                              ? Math.min((executado / meta.meta_quantidade) * 100, 100) 
+                              : 0;
+                            
+                            return (
+                              <div 
+                                key={meta.id} 
+                                className="p-4 bg-muted rounded-2xl border border-border hover:border-primary/30 transition-all"
+                              >
+                                <div className="flex items-start gap-3 mb-3">
+                                  <div className="w-8 h-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center font-black text-xs shrink-0">
+                                    {String(idx + 1).padStart(2, '0')}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h5 className="font-bold text-foreground text-sm leading-tight">
+                                      {meta.descricao || 'Meta sem descrição'}
+                                    </h5>
+                                    <p className="text-[10px] text-muted-foreground mt-1">
+                                      Indicador: {meta.indicador || 'N/A'}
+                                    </p>
+                                  </div>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">
+                                      Progresso: {executado}/{meta.meta_quantidade}
+                                    </span>
+                                    <span className={`font-bold ${percentual >= 100 ? 'text-success' : percentual >= 50 ? 'text-warning' : 'text-muted-foreground'}`}>
+                                      {percentual.toFixed(0)}%
+                                    </span>
+                                  </div>
+                                  <Progress value={percentual} className="h-2" />
+                                  
+                                  <div className="flex justify-between text-[10px] text-muted-foreground mt-2">
+                                    <span>
+                                      Valor Unit: R$ {(meta.valor_unitario || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </span>
+                                    <span className="font-bold text-foreground">
+                                      Total: R$ {((meta.meta_quantidade || 0) * (meta.valor_unitario || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                {/* Input to update progress */}
+                                <div className="mt-3 flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={meta.meta_quantidade}
+                                    value={executado}
+                                    onChange={(e) => {
+                                      const value = Math.min(parseInt(e.target.value) || 0, meta.meta_quantidade);
+                                      setMetaProgress(prev => {
+                                        const exists = prev.find(p => p.metaId === meta.id);
+                                        if (exists) {
+                                          return prev.map(p => p.metaId === meta.id ? { ...p, executado: value } : p);
+                                        }
+                                        return [...prev, { metaId: meta.id, executado: value }];
+                                      });
+                                    }}
+                                    className="w-20 px-3 py-1.5 text-xs bg-card rounded-lg border border-border outline-none focus:ring-2 focus:ring-primary/20"
+                                    placeholder="Qtd"
+                                  />
+                                  <span className="text-[10px] text-muted-foreground">executado</span>
+                                  {percentual >= 100 && (
+                                    <CheckCircle2 className="text-success ml-auto" size={16} />
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                        
+                        {/* Summary */}
+                        {workPlan.metas.length > 0 && (
+                          <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20">
+                            <div className="flex items-center gap-2 mb-2">
+                              <TrendingUp size={16} className="text-primary" />
+                              <span className="text-xs font-black text-primary uppercase">Resumo de Execução</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-xs">
+                              <div>
+                                <p className="text-muted-foreground">Metas Concluídas</p>
+                                <p className="font-black text-foreground">
+                                  {workPlan.metas.filter(m => {
+                                    const p = metaProgress.find(mp => mp.metaId === m.id);
+                                    return p && p.executado >= m.meta_quantidade;
+                                  }).length} / {workPlan.metas.length}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Valor Executado</p>
+                                <p className="font-black text-foreground">
+                                  R$ {workPlan.metas.reduce((sum, m) => {
+                                    const p = metaProgress.find(mp => mp.metaId === m.id);
+                                    return sum + ((p?.executado || 0) * (m.valor_unitario || 0));
+                                  }, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
