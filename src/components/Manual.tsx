@@ -7,6 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
+import { useAuth } from '@/hooks/useAuth';
+import { UserRole } from '@/types';
 
 interface ManualTopic {
   id: string;
@@ -18,6 +20,11 @@ interface ManualTopic {
 }
 
 const ManualModule: React.FC = () => {
+  const { profile } = useAuth();
+  
+  // Check if user is OSC
+  const isOSC = profile?.role === UserRole.OSC_LEGAL || profile?.role === UserRole.OSC_USER;
+  
   const [selectedTopic, setSelectedTopic] = useState<ManualTopic | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
@@ -91,6 +98,24 @@ const ManualModule: React.FC = () => {
         '5. Monitore logs de auditoria',
         '6. Gere relatórios gerenciais',
         '7. Mantenha o manual atualizado',
+      ]
+    },
+    { 
+      id: '5', 
+      title: 'Como Enviar Evidências Fotográficas', 
+      category: 'OSC', 
+      icon: ShieldCheck,
+      content: 'Guia para envio de evidências fotográficas obrigatórias: fotos de antes, durante e depois das atividades executadas.',
+      steps: [
+        '1. Acesse o módulo "Prestação de Contas"',
+        '2. Selecione a parceria desejada',
+        '3. Clique na aba "REO (Execução do Objeto)"',
+        '4. Clique no botão "Upload de Arquivos"',
+        '5. Selecione no mínimo 3 imagens: ANTES, DURANTE e DEPOIS',
+        '6. Cada imagem deve ter no máximo 10MB',
+        '7. Formatos aceitos: JPG, PNG, PDF',
+        '8. Aguarde o upload e confirmação do sistema',
+        '9. As evidências serão analisadas pelo gestor da parceria',
       ]
     },
   ]);
@@ -228,14 +253,17 @@ const ManualModule: React.FC = () => {
           <p className="text-muted-foreground font-medium">Instruções de uso editáveis pelo Administrador Master.</p>
         </div>
         <div className="flex gap-3">
-          <Button 
-            variant="outline" 
-            onClick={handleEditManual}
-            className="px-6 py-3 rounded-2xl font-black text-xs uppercase"
-          >
-            <Edit3 size={16} className="mr-2" />
-            Editar Manual
-          </Button>
+          {/* Botão Editar Manual - OCULTO para OSC */}
+          {!isOSC && (
+            <Button 
+              variant="outline" 
+              onClick={handleEditManual}
+              className="px-6 py-3 rounded-2xl font-black text-xs uppercase"
+            >
+              <Edit3 size={16} className="mr-2" />
+              Editar Manual
+            </Button>
+          )}
           <Button 
             onClick={handleDownloadPDF}
             className="px-6 py-3 rounded-2xl font-black text-xs uppercase shadow-xl"

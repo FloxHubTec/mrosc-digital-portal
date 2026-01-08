@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Settings, Plus, Users, Mail, Shield, Edit, Save, X, Key } from 'lucide-react';
+import { User, Settings, Plus, Users, Mail, Shield, Edit, Save, X, Key, Building } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,9 +19,16 @@ interface UserProfileSettingsProps {
     avatar?: string;
   };
   isMaster?: boolean;
+  isOSC?: boolean;
+  oscName?: string;
 }
 
-const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ user, isMaster = false }) => {
+const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ 
+  user, 
+  isMaster = false, 
+  isOSC = false,
+  oscName = ''
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showCreateUser, setShowCreateUser] = useState(false);
@@ -30,6 +37,7 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ user, isMaste
     name: user.name,
     email: user.email || '',
     department: user.department || '',
+    institution: oscName || '', // Nome da instituição para OSC
     phone: '',
   });
   
@@ -50,6 +58,8 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ user, isMaste
   }>>([
     { id: '1', name: 'Maria Silva', email: 'maria@osc.org.br', role: 'Usuário OSC', status: 'Ativo' },
     { id: '2', name: 'João Santos', email: 'joao@unai.mg.gov.br', role: 'Gestor', status: 'Ativo' },
+    { id: '3', name: 'Ana Costa', email: 'ana@osc.org.br', role: 'Representante Legal OSC', status: 'Ativo' },
+    { id: '4', name: 'Carlos Oliveira', email: 'carlos@unai.mg.gov.br', role: 'Controle Interno', status: 'Ativo' },
   ]);
 
   const handleSaveProfile = () => {
@@ -86,6 +96,8 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ user, isMaste
         return 'bg-blue-100 text-blue-700';
       case 'Técnico':
         return 'bg-green-100 text-green-700';
+      case 'Controle Interno':
+        return 'bg-orange-100 text-orange-700';
       default:
         return 'bg-gray-100 text-gray-700';
     }
@@ -151,14 +163,31 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({ user, isMaste
                   disabled={!isEditing}
                 />
               </div>
-              <div>
-                <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block">Departamento</label>
-                <Input
-                  value={profileData.department}
-                  onChange={e => setProfileData({ ...profileData, department: e.target.value })}
-                  disabled={!isEditing}
-                />
-              </div>
+              
+              {/* Campo diferente para OSC: Nome da Instituição ao invés de Departamento */}
+              {isOSC ? (
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block flex items-center gap-1">
+                    <Building size={12} /> Nome da Instituição
+                  </label>
+                  <Input
+                    value={profileData.institution}
+                    onChange={e => setProfileData({ ...profileData, institution: e.target.value })}
+                    disabled={!isEditing}
+                    placeholder="Nome da OSC"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block">Departamento</label>
+                  <Input
+                    value={profileData.department}
+                    onChange={e => setProfileData({ ...profileData, department: e.target.value })}
+                    disabled={!isEditing}
+                  />
+                </div>
+              )}
+              
               <div>
                 <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block">Telefone</label>
                 <Input
