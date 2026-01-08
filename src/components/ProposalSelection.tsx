@@ -79,9 +79,9 @@ const ProposalSelectionModule: React.FC = () => {
 
   const stats = getStatsByStatus();
 
-  // Check if we can publish results
+  // Check if we can publish results - enabled when a call is selected and has proposals with scores
   const canPublishResult = callFilter !== 'all' && 
-    proposals.filter(p => p.public_call_id === callFilter && (p.status === 'avaliada' || p.status === 'habilitada' && p.pontuacao_total > 0)).length > 0;
+    proposals.some(p => p.public_call_id === callFilter && p.pontuacao_total > 0 && !['inabilitada', 'desclassificada'].includes(p.status));
 
   // Get proposals for current call filter to calculate provisional ranking
   const proposalsForCurrentCall = proposals
