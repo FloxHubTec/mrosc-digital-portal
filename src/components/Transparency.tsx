@@ -15,6 +15,9 @@ import {
   MapPin,
   Camera,
   ImageIcon,
+  MessageSquareWarning,
+  Send,
+  Paperclip,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import jsPDF from "jspdf";
@@ -23,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "@/hooks/use-toast";
 
 // Interface para as fotos
 interface FotoEvidencia {
@@ -277,6 +281,8 @@ const TransparencyPortal: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPartnership, setSelectedPartnership] = useState<Partnership | null>(null);
   const [selectedEdital, setSelectedEdital] = useState<Chamamento | null>(null);
+  const [showOuvidoria, setShowOuvidoria] = useState(false);
+  const [ouvidoriaForm, setOuvidoriaForm] = useState({ tipo: 'denuncia', relato: '', anexo: null as File | null });
 
   const filteredPartnerships = mockPartnerships.filter((p) => {
     if (!searchTerm) return true;
@@ -850,6 +856,77 @@ const TransparencyPortal: React.FC = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* FAB Ouvidoria */}
+      <button
+        onClick={() => setShowOuvidoria(true)}
+        className="fixed bottom-8 right-8 p-5 bg-primary text-primary-foreground rounded-full shadow-2xl hover:scale-110 transition-transform z-50 flex items-center gap-2"
+        title="Ouvidoria / Denúncias"
+      >
+        <MessageSquareWarning size={24} />
+        <span className="hidden md:inline font-bold text-sm">Ouvidoria</span>
+      </button>
+
+      {/* Ouvidoria Modal */}
+      <Dialog open={showOuvidoria} onOpenChange={setShowOuvidoria}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black flex items-center gap-2">
+              <MessageSquareWarning className="text-primary" />
+              Ouvidoria / Denúncias
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const protocolo = `OUV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${String(Date.now()).slice(-6)}`;
+            toast({ title: "Registro enviado!", description: `Protocolo: ${protocolo}` });
+            setOuvidoriaForm({ tipo: 'denuncia', relato: '', anexo: null });
+            setShowOuvidoria(false);
+          }} className="space-y-5 mt-4">
+            <p className="text-sm text-muted-foreground">
+              Canal anônimo para registro de denúncias, reclamações e sugestões sobre as parcerias públicas.
+            </p>
+            <div>
+              <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Tipo *</label>
+              <select
+                value={ouvidoriaForm.tipo}
+                onChange={(e) => setOuvidoriaForm({ ...ouvidoriaForm, tipo: e.target.value })}
+                className="w-full px-4 py-3 bg-muted rounded-xl text-sm outline-none focus:ring-4 focus:ring-primary/20 text-foreground"
+              >
+                <option value="denuncia">Denúncia</option>
+                <option value="reclamacao">Reclamação</option>
+                <option value="sugestao">Sugestão</option>
+                <option value="elogio">Elogio</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Relato *</label>
+              <textarea
+                value={ouvidoriaForm.relato}
+                onChange={(e) => setOuvidoriaForm({ ...ouvidoriaForm, relato: e.target.value })}
+                required
+                rows={5}
+                placeholder="Descreva sua manifestação..."
+                className="w-full px-4 py-3 bg-muted rounded-xl text-sm outline-none focus:ring-4 focus:ring-primary/20 resize-none text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Anexo (opcional)</label>
+              <label className="flex items-center gap-2 px-4 py-3 bg-muted rounded-xl cursor-pointer hover:bg-muted/80 transition-colors">
+                <Paperclip size={16} className="text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  {ouvidoriaForm.anexo ? ouvidoriaForm.anexo.name : 'Clique para anexar arquivo'}
+                </span>
+                <input type="file" className="hidden" onChange={(e) => setOuvidoriaForm({ ...ouvidoriaForm, anexo: e.target.files?.[0] || null })} />
+              </label>
+            </div>
+            <Button type="submit" className="w-full gap-2">
+              <Send size={16} />
+              Enviar Manifestação
+            </Button>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

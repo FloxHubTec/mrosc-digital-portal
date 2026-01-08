@@ -1,6 +1,8 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FileText, Users, FileSignature, ShieldCheck, Eye, Search, Menu, X, ClipboardList, Megaphone, Briefcase, History, Lock, BookOpen, MessageSquare, Scale, BarChartHorizontal, LogOut, Trophy, FilePlus2, HelpCircle, Link2, FolderOpen, Settings } from 'lucide-react';
+import { LabelProvider } from './contexts/LabelContext';
+import CurrentDateTime from './components/CurrentDateTime';
 import Dashboard from './components/Dashboard';
 import PartnershipsModule from './components/Partnerships';
 import AmendmentsModule from './components/Amendments';
@@ -207,6 +209,11 @@ const MainApp: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center space-x-4 md:space-x-6">
+            {/* Current DateTime */}
+            <div className="hidden lg:block">
+              <CurrentDateTime />
+            </div>
+            
             <div className="hidden md:flex flex-col items-end mr-4">
               <span className="text-[10px] font-black text-primary uppercase">Ambiente Seguro</span>
               <span className="text-[9px] text-muted-foreground font-bold">{currentUser.department || 'Prefeitura de Unaí'}</span>
@@ -268,7 +275,9 @@ const AppRoutes: React.FC = () => {
 const AppWrapper = () => (
   <HashRouter>
     <AuthProvider>
-      <AppRoutes />
+      <LabelProvider>
+        <AppRoutes />
+      </LabelProvider>
     </AuthProvider>
   </HashRouter>
 );

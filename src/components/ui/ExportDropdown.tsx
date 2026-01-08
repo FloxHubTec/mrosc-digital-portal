@@ -14,6 +14,7 @@ const ExportDropdown: React.FC<ExportDropdownProps> = ({ onExport, className = '
     { id: 'excel' as ExportFormat, label: 'Excel (.xlsx)', icon: FileSpreadsheet },
     { id: 'csv' as ExportFormat, label: 'CSV (.csv)', icon: FileText },
     { id: 'pdf' as ExportFormat, label: 'PDF (.pdf)', icon: FileText },
+    { id: 'sicom' as ExportFormat, label: 'Layout SICOM (CSV)', icon: FileSpreadsheet },
   ];
 
   return (
