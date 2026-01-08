@@ -79,6 +79,23 @@ const ProposalSelectionModule: React.FC = () => {
 
   const stats = getStatsByStatus();
 
+  // Check if we can publish results
+  const canPublishResult = callFilter !== 'all' && 
+    proposals.filter(p => p.public_call_id === callFilter && (p.status === 'avaliada' || p.status === 'habilitada' && p.pontuacao_total > 0)).length > 0;
+
+  // Get proposals for current call filter to calculate provisional ranking
+  const proposalsForCurrentCall = proposals
+    .filter(p => callFilter !== 'all' && p.public_call_id === callFilter)
+    .sort((a, b) => (b.pontuacao_total || 0) - (a.pontuacao_total || 0));
+
+  // Create a map of provisional rankings based on score
+  const provisionalRankingMap = new Map<string, number>();
+  proposalsForCurrentCall
+    .filter(p => p.pontuacao_total > 0 && !['inabilitada', 'desclassificada'].includes(p.status))
+    .forEach((p, index) => {
+      provisionalRankingMap.set(p.id, index + 1);
+    });
+
   const filteredProposals = proposals.filter(p => {
     const matchesSearch = p.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.osc?.razao_social?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -424,7 +441,13 @@ const ProposalSelectionModule: React.FC = () => {
           <Button variant="outline" onClick={() => setShowAtaModal(true)} className="gap-2">
             <Gavel size={16} /> Gerar Ata
           </Button>
-          <Button variant="outline" onClick={handlePublicarResultado} className="gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handlePublicarResultado} 
+            className="gap-2"
+            disabled={!canPublishResult}
+            title={!canPublishResult ? 'Selecione um chamamento e avalie ao menos uma proposta' : 'Publicar resultado oficial'}
+          >
             <Megaphone size={16} /> Publicar Resultado
           </Button>
           <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
@@ -617,6 +640,10 @@ const ProposalSelectionModule: React.FC = () => {
                       {proposal.ranking ? (
                         <Badge variant={proposal.ranking === 1 ? 'default' : proposal.ranking <= 3 ? 'secondary' : 'outline'}>
                           #{proposal.ranking}
+                        </Badge>
+                      ) : provisionalRankingMap.has(proposal.id) ? (
+                        <Badge variant="outline" className="border-dashed text-muted-foreground">
+                          #{provisionalRankingMap.get(proposal.id)}
                         </Badge>
                       ) : <span className="text-muted-foreground">-</span>}
                     </TableCell>
