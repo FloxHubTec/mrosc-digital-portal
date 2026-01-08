@@ -55,14 +55,58 @@ const AuditLogsModule: React.FC = () => {
       ip: "192.168.0.11",
       hash: "ff23...e091",
     },
+    {
+      id: "5",
+      user: "Admin Master",
+      action: "UPDATE",
+      resource: "OSC - Instituto Esperança",
+      details: "Atualização de dados cadastrais e CNPJ",
+      date: "17/10/2023 10:20",
+      ip: "192.168.0.10",
+      hash: "a1b2...c3d4",
+    },
+    {
+      id: "6",
+      user: "Gestor Saúde",
+      action: "UPDATE",
+      resource: "Plano de Trabalho #PT-042",
+      details: "Atualização de metas e cronograma",
+      date: "16/10/2023 15:45",
+      ip: "192.168.0.15",
+      hash: "e5f6...g7h8",
+    },
+    {
+      id: "7",
+      user: "Admin Master",
+      action: "EXPORT",
+      resource: "Relatório SICOM",
+      details: "Exportação de dados para TCE-MG",
+      date: "15/10/2023 09:00",
+      ip: "192.168.0.10",
+      hash: "i9j0...k1l2",
+    },
+    {
+      id: "8",
+      user: "OSC Vida Plena",
+      action: "UPLOAD",
+      resource: "Prestação de Contas",
+      details: "Upload de comprovantes fiscais",
+      date: "14/10/2023 16:30",
+      ip: "177.42.15.22",
+      hash: "m3n4...o5p6",
+    },
   ];
 
   const actionOptions = [
     { value: "", label: "Todas as Ações" },
     { value: "CREATE", label: "Criação" },
     { value: "EDIT", label: "Edição" },
+    { value: "UPDATE", label: "Atualização" },
     { value: "DELETE", label: "Exclusão" },
     { value: "LOGIN", label: "Login" },
+    { value: "LOGOUT", label: "Logout" },
+    { value: "EXPORT", label: "Exportação" },
+    { value: "UPLOAD", label: "Upload" },
   ];
 
   const handleExport = (format: ExportFormat) => {
@@ -249,9 +293,15 @@ const AuditLogsModule: React.FC = () => {
                           ? "bg-info/10 text-info"
                           : log.action === "EDIT"
                             ? "bg-warning/10 text-warning"
-                            : log.action === "DELETE"
-                              ? "bg-destructive/10 text-destructive"
-                              : "bg-muted text-muted-foreground"
+                            : log.action === "UPDATE"
+                              ? "bg-primary/10 text-primary"
+                              : log.action === "DELETE"
+                                ? "bg-destructive/10 text-destructive"
+                                : log.action === "EXPORT"
+                                  ? "bg-success/10 text-success"
+                                  : log.action === "UPLOAD"
+                                    ? "bg-info/10 text-info"
+                                    : "bg-muted text-muted-foreground"
                       }`}
                     >
                       {log.action}

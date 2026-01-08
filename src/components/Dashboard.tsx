@@ -176,14 +176,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           icon={Activity}
           color="teal"
           trend={{ value: 8, positive: true }}
-          onClick={() => navigate('/parcerias')}
+          onClick={() => navigate('/partnerships')}
         />
         <StatCard 
           title="Emendas Alocadas" 
           value="R$ 1.8M" 
           icon={DollarSign} 
           color="indigo" 
-          onClick={() => navigate('/emendas')}
+          onClick={() => navigate('/amendments')}
         />
         <StatCard 
           title="Chamamentos" 

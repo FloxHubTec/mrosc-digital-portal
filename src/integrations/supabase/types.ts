@@ -834,6 +834,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_my_osc_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -841,6 +842,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_gov_staff: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

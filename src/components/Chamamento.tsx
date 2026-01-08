@@ -1,12 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import { Megaphone, Plus, Search, FileText, Filter, ChevronRight, Clock, X, Loader2, CheckCircle, ChevronDown } from 'lucide-react';
-import { usePublicCalls } from '@/hooks/usePublicCalls';
+import { Megaphone, Plus, Search, FileText, Filter, ChevronRight, Clock, X, Loader2, CheckCircle, ChevronDown, Calendar, DollarSign, ExternalLink, Eye } from 'lucide-react';
+import { usePublicCalls, PublicCall } from '@/hooks/usePublicCalls';
 import { useLabels } from '@/contexts/LabelContext';
+import { toast } from 'sonner';
 
 const ChamamentoModule: React.FC = () => {
   const { publicCalls, loading, createPublicCall } = usePublicCalls();
   const { getLabel } = useLabels();
   const [showModal, setShowModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedCall, setSelectedCall] = useState<PublicCall | null>(null);
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -54,7 +57,7 @@ const ChamamentoModule: React.FC = () => {
     e.preventDefault();
     setSaving(true);
     
-    await createPublicCall({
+    const result = await createPublicCall({
       numero_edital: formData.numero_edital,
       objeto: formData.objeto,
       status: formData.status,
@@ -64,9 +67,22 @@ const ChamamentoModule: React.FC = () => {
       pdf_url: null,
     });
     
+    if (!result.error) {
+      toast.success(`${getLabel('edital')} publicado com sucesso! Disponível no Portal Público.`);
+    }
+    
     setFormData({ numero_edital: '', objeto: '', status: 'aberto', data_inicio: '', data_fim: '', valor_total: '' });
     setShowModal(false);
     setSaving(false);
+  };
+
+  const handleViewDetails = (call: PublicCall) => {
+    setSelectedCall(call);
+    setShowDetailModal(true);
+  };
+
+  const handleOpenPortalPublico = () => {
+    window.open('/#/transparency', '_blank');
   };
 
   const getStatusStyle = (status: string | null) => {
@@ -203,7 +219,11 @@ const ChamamentoModule: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-border">
               {filteredCalls.map((c) => (
-                <tr key={c.id} className="group hover:bg-primary/5 transition-all cursor-pointer">
+                <tr 
+                  key={c.id} 
+                  className="group hover:bg-primary/5 transition-all cursor-pointer"
+                  onClick={() => handleViewDetails(c)}
+                >
                   <td className="px-4 md:px-8 py-6 md:py-7">
                     <div className="font-black text-primary text-sm">{c.numero_edital}</div>
                   </td>
@@ -222,8 +242,14 @@ const ChamamentoModule: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-4 md:px-8 py-6 md:py-7 text-right">
-                    <button className="p-3 bg-muted text-muted-foreground rounded-xl group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                      <ChevronRight size={18} />
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleViewDetails(c);
+                      }}
+                      className="p-3 bg-muted text-muted-foreground rounded-xl group-hover:bg-primary group-hover:text-primary-foreground transition-all"
+                    >
+                      <Eye size={18} />
                     </button>
                   </td>
                 </tr>
@@ -336,6 +362,81 @@ const ChamamentoModule: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {showDetailModal && selectedCall && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-[2rem] p-6 md:p-8 w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase border ${getStatusStyle(selectedCall.status)}`}>
+                  {getStatusLabel(selectedCall.status)}
+                </span>
+                <h3 className="text-2xl font-black text-foreground mt-3">{selectedCall.numero_edital}</h3>
+              </div>
+              <button onClick={() => setShowDetailModal(false)} className="p-2 hover:bg-muted rounded-xl transition-colors text-muted-foreground">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-muted p-5 rounded-2xl">
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Objeto</p>
+                <p className="text-foreground leading-relaxed">{selectedCall.objeto}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-muted p-5 rounded-2xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar size={14} className="text-primary" />
+                    <p className="text-[10px] font-black text-muted-foreground uppercase">Data Início</p>
+                  </div>
+                  <p className="font-bold text-foreground">
+                    {selectedCall.data_inicio ? new Date(selectedCall.data_inicio).toLocaleDateString('pt-BR') : 'Não definida'}
+                  </p>
+                </div>
+                <div className="bg-muted p-5 rounded-2xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock size={14} className="text-primary" />
+                    <p className="text-[10px] font-black text-muted-foreground uppercase">Data Fim</p>
+                  </div>
+                  <p className="font-bold text-foreground">
+                    {selectedCall.data_fim ? new Date(selectedCall.data_fim).toLocaleDateString('pt-BR') : 'Não definida'}
+                  </p>
+                </div>
+              </div>
+
+              {selectedCall.valor_total && (
+                <div className="bg-primary/10 p-5 rounded-2xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <DollarSign size={14} className="text-primary" />
+                    <p className="text-[10px] font-black text-primary uppercase">Valor Total</p>
+                  </div>
+                  <p className="font-black text-primary text-2xl">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedCall.valor_total)}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handleOpenPortalPublico}
+                  className="flex-1 py-4 bg-muted text-foreground rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-muted/80"
+                >
+                  <ExternalLink size={16} />
+                  Ver no Portal Público
+                </button>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="flex-1 py-4 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

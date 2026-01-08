@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Search,
   ChevronRight,
@@ -19,6 +19,7 @@ import {
   Send,
   Paperclip,
   ShieldCheck,
+  Loader2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import jsPDF from "jspdf";
@@ -29,6 +30,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { useTheme } from "@/contexts/ThemeContext";
+import { usePublicCalls, PublicCall } from "@/hooks/usePublicCalls";
 
 // Interface para as fotos
 interface FotoEvidencia {
@@ -281,11 +283,27 @@ const mockLegislacao = [
 
 const TransparencyPortal: React.FC = () => {
   const { theme } = useTheme();
+  const { publicCalls, loading: loadingCalls } = usePublicCalls();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPartnership, setSelectedPartnership] = useState<Partnership | null>(null);
   const [selectedEdital, setSelectedEdital] = useState<Chamamento | null>(null);
+  const [selectedPublicCall, setSelectedPublicCall] = useState<PublicCall | null>(null);
   const [showOuvidoria, setShowOuvidoria] = useState(false);
   const [ouvidoriaForm, setOuvidoriaForm] = useState({ tipo: 'denuncia', relato: '', anexo: null as File | null });
+
+  // Process public calls from database with auto-status calculation
+  const processedPublicCalls = useMemo(() => {
+    const now = new Date();
+    return publicCalls.map(c => {
+      if (c.data_fim) {
+        const endDate = new Date(c.data_fim);
+        if (endDate < now && c.status !== 'encerrado' && c.status !== 'homologado') {
+          return { ...c, status: 'encerrado' };
+        }
+      }
+      return c;
+    });
+  }, [publicCalls]);
 
   const filteredPartnerships = mockPartnerships.filter((p) => {
     if (!searchTerm) return true;
@@ -298,6 +316,10 @@ const TransparencyPortal: React.FC = () => {
       p.responsavel.toLowerCase().includes(term)
     );
   });
+
+  const handleOpenPublicCall = (call: PublicCall) => {
+    setSelectedPublicCall(call);
+  };
 
   const handleDownloadPDF = (partnership: Partnership) => {
     const doc = new jsPDF();
@@ -602,32 +624,50 @@ const TransparencyPortal: React.FC = () => {
               <FileText className="text-primary" /> Chamamentos Públicos
             </h4>
             <div className="space-y-4">
-              {mockChamamentos.map((chamamento) => (
-                <div
-                  key={chamamento.id}
-                  className="flex justify-between items-center p-6 bg-muted rounded-3xl hover:bg-primary/10 transition-colors cursor-pointer"
-                  onClick={() => handleOpenEdital(chamamento)}
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-[10px] font-black text-primary uppercase">{chamamento.edital}</p>
-                      <Badge variant={chamamento.status === "aberto" ? "default" : "secondary"} className="text-[8px]">
-                        {chamamento.status === "aberto" ? "ABERTO" : "ENCERRADO"}
-                      </Badge>
-                    </div>
-                    <p className="text-sm font-bold text-foreground">{chamamento.titulo}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Valor: {chamamento.valorTotal}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {chamamento.status === "encerrado" ? (
-                      <CheckCircle2 className="text-green-600" size={18} />
-                    ) : (
-                      <Clock className="text-primary" size={18} />
-                    )}
-                    <ExternalLink className="text-primary" size={16} />
-                  </div>
+              {loadingCalls ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
                 </div>
-              ))}
+              ) : processedPublicCalls.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>Nenhum chamamento público disponível.</p>
+                </div>
+              ) : (
+                processedPublicCalls.map((call) => (
+                  <div
+                    key={call.id}
+                    className="flex justify-between items-center p-6 bg-muted rounded-3xl hover:bg-primary/10 transition-colors cursor-pointer"
+                    onClick={() => handleOpenPublicCall(call)}
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-[10px] font-black text-primary uppercase">{call.numero_edital}</p>
+                        <Badge 
+                          variant={call.status === "aberto" ? "default" : "secondary"} 
+                          className="text-[8px]"
+                        >
+                          {call.status === "aberto" ? "ABERTO" : call.status === "homologado" ? "HOMOLOGADO" : "ENCERRADO"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm font-bold text-foreground line-clamp-2">{call.objeto}</p>
+                      {call.valor_total && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Valor: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(call.valor_total)}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {call.status === "encerrado" || call.status === "homologado" ? (
+                        <CheckCircle2 className="text-green-600" size={18} />
+                      ) : (
+                        <Clock className="text-primary" size={18} />
+                      )}
+                      <Eye className="text-primary" size={16} />
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
           <div className="bg-card p-10 rounded-[3.5rem] shadow-xl border border-border">
@@ -939,6 +979,96 @@ const TransparencyPortal: React.FC = () => {
               Enviar Manifestação
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Public Call Details Modal */}
+      <Dialog open={!!selectedPublicCall} onOpenChange={() => setSelectedPublicCall(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black flex items-center gap-2">
+              <FileText className="text-primary" />
+              Detalhes do Chamamento
+            </DialogTitle>
+          </DialogHeader>
+          {selectedPublicCall && (
+            <div className="space-y-6 mt-4">
+              <div className="flex items-center gap-3">
+                <Badge 
+                  variant={selectedPublicCall.status === "aberto" ? "default" : "secondary"}
+                  className="text-xs"
+                >
+                  {selectedPublicCall.status === "aberto" ? "INSCRIÇÕES ABERTAS" : 
+                   selectedPublicCall.status === "homologado" ? "HOMOLOGADO" : "ENCERRADO"}
+                </Badge>
+                <span className="text-lg font-black text-primary">{selectedPublicCall.numero_edital}</span>
+              </div>
+
+              <div className="bg-muted p-5 rounded-2xl">
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Objeto</p>
+                <p className="text-foreground leading-relaxed">{selectedPublicCall.objeto}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-muted p-5 rounded-2xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar size={14} className="text-primary" />
+                    <p className="text-[10px] font-black text-muted-foreground uppercase">Data Início</p>
+                  </div>
+                  <p className="font-bold text-foreground">
+                    {selectedPublicCall.data_inicio 
+                      ? new Date(selectedPublicCall.data_inicio).toLocaleDateString('pt-BR') 
+                      : 'Não definida'}
+                  </p>
+                </div>
+                <div className="bg-muted p-5 rounded-2xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock size={14} className="text-primary" />
+                    <p className="text-[10px] font-black text-muted-foreground uppercase">Data Encerramento</p>
+                  </div>
+                  <p className="font-bold text-foreground">
+                    {selectedPublicCall.data_fim 
+                      ? new Date(selectedPublicCall.data_fim).toLocaleDateString('pt-BR') 
+                      : 'Não definida'}
+                  </p>
+                </div>
+              </div>
+
+              {selectedPublicCall.valor_total && (
+                <div className="bg-primary/10 p-5 rounded-2xl">
+                  <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-2">Valor Total Disponível</p>
+                  <p className="font-black text-primary text-2xl">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedPublicCall.valor_total)}
+                  </p>
+                </div>
+              )}
+
+              <div className="bg-muted/50 p-5 rounded-2xl border border-border">
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3">Informações Adicionais</p>
+                <ul className="space-y-2 text-sm text-foreground">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 size={16} className="text-primary mt-0.5 shrink-0" />
+                    <span>Consulte o edital completo para requisitos de participação</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 size={16} className="text-primary mt-0.5 shrink-0" />
+                    <span>Conforme Lei Federal 13.019/2014 (MROSC)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 size={16} className="text-primary mt-0.5 shrink-0" />
+                    <span>Publicação conforme Art. 26 da Lei 13.019/14</span>
+                  </li>
+                </ul>
+              </div>
+
+              <Button 
+                onClick={() => setSelectedPublicCall(null)}
+                className="w-full"
+              >
+                Fechar
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
