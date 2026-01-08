@@ -142,11 +142,30 @@ const ProposalSelectionModule: React.FC = () => {
 
   const handlePublicarResultado = async () => {
     if (!callFilter || callFilter === 'all') {
-      toast.error('Selecione um chamamento específico');
+      toast.error('Selecione um chamamento específico para publicar o resultado');
       return;
     }
-    await calculateRankings(callFilter);
-    toast.success('Rankings calculados e resultado publicado!');
+    
+    try {
+      await calculateRankings(callFilter);
+      
+      // Update all evaluated proposals to "selecionada" status based on ranking
+      const proposalsToUpdate = filteredProposals
+        .filter(p => p.public_call_id === callFilter && p.status === 'avaliada')
+        .sort((a, b) => (b.pontuacao_total || 0) - (a.pontuacao_total || 0));
+      
+      for (let i = 0; i < proposalsToUpdate.length; i++) {
+        const status = i === 0 ? 'selecionada' : 'avaliada';
+        if (i === 0) {
+          await updateProposal(proposalsToUpdate[i].id, { status });
+        }
+      }
+      
+      await refetch();
+      toast.success('Resultado publicado com sucesso! Rankings calculados e proposta vencedora selecionada.');
+    } catch (error) {
+      toast.error('Erro ao publicar resultado');
+    }
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
