@@ -1,6 +1,6 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, Users, FileSignature, ShieldCheck, Eye, Search, Menu, X, ClipboardList, Megaphone, Briefcase, History, Lock, BookOpen, MessageSquare, Scale, BarChartHorizontal, LogOut, Trophy, FilePlus2, HelpCircle, Link2, FolderOpen } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, FileSignature, ShieldCheck, Eye, Search, Menu, X, ClipboardList, Megaphone, Briefcase, History, Lock, BookOpen, MessageSquare, Scale, BarChartHorizontal, LogOut, Trophy, FilePlus2, HelpCircle, Link2, FolderOpen, Settings } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import PartnershipsModule from './components/Partnerships';
 import AmendmentsModule from './components/Amendments';
@@ -21,6 +21,7 @@ import IntegrationsModule from './components/Integrations';
 import OSCDocumentation from './components/OSCDocumentation';
 import NotificationDropdown from './components/NotificationDropdown';
 import UserProfileSettings from './components/UserProfileSettings';
+import AdminSettings from './components/AdminSettings';
 import Auth from './pages/Auth';
 import { UserRole } from './types';
 import { AuthProvider, useAuth, getRoleEnum, isSuperAdmin } from './hooks/useAuth';
@@ -173,6 +174,7 @@ const MainApp: React.FC = () => {
           <SidebarItem to="/logs" icon={History} label="Audit Trail (LGPD)" active={location.pathname === '/logs'} hidden={!canAccess('/logs')} />
           <SidebarItem to="/support" icon={HelpCircle} label="Suporte" active={location.pathname === '/support'} />
           <SidebarItem to="/integrations" icon={Link2} label="Integrações" active={location.pathname === '/integrations'} hidden={!canAccess('/integrations')} />
+          <SidebarItem to="/admin-settings" icon={Settings} label="Configurações" active={location.pathname === '/admin-settings'} hidden={!isMasterUser} />
           <SidebarItem to="/manual" icon={BookOpen} label="Manual do Sistema" active={location.pathname === '/manual'} />
           <SidebarItem to="/transparency" icon={Eye} label="Portal Público" active={false} />
         </nav>
@@ -238,6 +240,7 @@ const MainApp: React.FC = () => {
             <Route path="/logs" element={canAccess('/logs') ? <AuditLogsModule /> : <AccessDenied />} />
             <Route path="/support" element={<SupportModule />} />
             <Route path="/integrations" element={canAccess('/integrations') ? <IntegrationsModule /> : <AccessDenied />} />
+            <Route path="/admin-settings" element={isMasterUser ? <AdminSettings /> : <AccessDenied />} />
             <Route path="/manual" element={<ManualModule />} />
           </Routes>
         </div>

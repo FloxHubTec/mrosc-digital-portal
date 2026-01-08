@@ -353,6 +353,28 @@ A prestação de contas deverá ser realizada eletronicamente através da plataf
                 </option>
               ))}
             </select>
+            
+            {linkedPartnership && (
+              <button
+                onClick={() => {
+                  const partnership = partnerships.find(p => p.id === linkedPartnership);
+                  if (!partnership || !selectedDoc) return;
+                  
+                  let content = aiContent || selectedDoc.conteudo || '';
+                  content = content.replace(/\[NOME_OSC\]|\[NOME DA ORGANIZAÇÃO DA SOCIEDADE CIVIL\]/g, partnership.osc?.razao_social || '[OSC]');
+                  content = content.replace(/\[VALOR\]/g, partnership.valor_repassado 
+                    ? `R$ ${partnership.valor_repassado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
+                    : '[VALOR]');
+                  content = content.replace(/\[CNPJ\]/g, partnership.osc?.cnpj || '[CNPJ]');
+                  
+                  setAiContent(content);
+                }}
+                className="mt-4 w-full py-3 bg-primary text-primary-foreground rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-all"
+              >
+                <FileSpreadsheet size={14} />
+                Preencher com Dados da Parceria
+              </button>
+            )}
           </div>
         </div>
       </div>

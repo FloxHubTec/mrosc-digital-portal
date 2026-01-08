@@ -1,10 +1,20 @@
 import React, { useState } from 'react';
-import { Users, Plus, AlertTriangle, Calendar, Search, X, Loader2, CheckCircle } from 'lucide-react';
+import { Users, Plus, AlertTriangle, Calendar, Search, X, Loader2, CheckCircle, ArrowLeft, ShieldAlert, FileWarning } from 'lucide-react';
 import { useOSCs } from '@/hooks/useOSCs';
+
+interface Sanction {
+  id: string;
+  tipo: 'Advertência' | 'Suspensão';
+  data: string;
+  motivo: string;
+  responsavel: string;
+}
 
 const OSCModule: React.FC = () => {
   const { oscs, loading, error, createOSC, updateOSC, deleteOSC } = useOSCs();
   const [showModal, setShowModal] = useState(false);
+  const [showSanctionModal, setShowSanctionModal] = useState(false);
+  const [selectedOSC, setSelectedOSC] = useState<typeof oscs[0] | null>(null);
   const [search, setSearch] = useState('');
   const [formData, setFormData] = useState({
     cnpj: '',
@@ -13,7 +23,14 @@ const OSCModule: React.FC = () => {
     validade_cnd: '',
     logo_url: '',
   });
+  const [sanctionForm, setSanctionForm] = useState({
+    tipo: 'Advertência' as 'Advertência' | 'Suspensão',
+    motivo: '',
+  });
   const [saving, setSaving] = useState(false);
+
+  // Mock sanctions data per OSC
+  const [sanctionsData, setSanctionsData] = useState<Record<string, Sanction[]>>({});
 
   const filteredOscs = oscs.filter(osc => 
     osc.razao_social.toLowerCase().includes(search.toLowerCase()) ||
@@ -35,6 +52,26 @@ const OSCModule: React.FC = () => {
     setFormData({ cnpj: '', razao_social: '', status_cnd: 'regular', validade_cnd: '', logo_url: '' });
     setShowModal(false);
     setSaving(false);
+  };
+
+  const handleAddSanction = () => {
+    if (!selectedOSC || !sanctionForm.motivo) return;
+    
+    const newSanction: Sanction = {
+      id: Date.now().toString(),
+      tipo: sanctionForm.tipo,
+      data: new Date().toISOString().split('T')[0],
+      motivo: sanctionForm.motivo,
+      responsavel: 'Usuário Atual',
+    };
+
+    setSanctionsData(prev => ({
+      ...prev,
+      [selectedOSC.id]: [...(prev[selectedOSC.id] || []), newSanction],
+    }));
+
+    setSanctionForm({ tipo: 'Advertência', motivo: '' });
+    setShowSanctionModal(false);
   };
 
   const formatCNPJ = (value: string) => {
@@ -65,6 +102,189 @@ const OSCModule: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // OSC Detail View with Sanctions
+  if (selectedOSC) {
+    const sanctions = sanctionsData[selectedOSC.id] || [];
+    
+    return (
+      <div className="space-y-8 animate-in fade-in slide-in-from-right duration-500">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <button 
+            onClick={() => setSelectedOSC(null)} 
+            className="flex items-center gap-2 text-primary font-black text-xs uppercase hover:bg-primary/10 px-4 py-2 rounded-xl transition-all"
+          >
+            <ArrowLeft size={16} /> Voltar para Lista
+          </button>
+        </header>
+
+        {/* OSC Header Card */}
+        <div className="bg-card rounded-[2.5rem] border border-border p-8 md:p-10 shadow-sm">
+          <div className="flex items-start gap-6">
+            <div className="w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center font-black text-2xl">
+              {selectedOSC.razao_social.charAt(0)}
+            </div>
+            <div className="flex-1">
+              <h2 className="text-2xl md:text-3xl font-black text-foreground">{selectedOSC.razao_social}</h2>
+              <p className="text-sm font-mono text-muted-foreground mt-1">{selectedOSC.cnpj}</p>
+              <div className="flex gap-4 mt-4">
+                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
+                  selectedOSC.status_cnd === 'regular' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
+                }`}>
+                  CND {selectedOSC.status_cnd}
+                </span>
+                {selectedOSC.validade_cnd && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Calendar size={12} />
+                    Validade: {new Date(selectedOSC.validade_cnd).toLocaleDateString('pt-BR')}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 border-b border-border pb-4">
+          <button className="px-6 py-3 bg-muted text-muted-foreground rounded-xl font-black text-xs uppercase tracking-widest">
+            Dados Cadastrais
+          </button>
+          <button className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-black text-xs uppercase tracking-widest">
+            Histórico de Penalidades
+          </button>
+          <button className="px-6 py-3 bg-muted text-muted-foreground rounded-xl font-black text-xs uppercase tracking-widest">
+            Parcerias
+          </button>
+        </div>
+
+        {/* Sanctions Section */}
+        <div className="bg-card rounded-[2rem] border border-border p-8 shadow-sm">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-warning/10 rounded-xl">
+                <ShieldAlert size={24} className="text-warning" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-foreground">Histórico de Penalidades</h3>
+                <p className="text-sm text-muted-foreground">Advertências, suspensões e sanções aplicadas</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowSanctionModal(true)}
+              className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:opacity-90 transition-all"
+            >
+              <Plus size={16} /> Adicionar Sanção
+            </button>
+          </div>
+
+          {sanctions.length === 0 ? (
+            <div className="text-center py-12">
+              <FileWarning className="mx-auto text-muted-foreground/30 mb-4" size={48} />
+              <p className="text-muted-foreground">Nenhuma penalidade registrada para esta OSC.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-4 px-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest">Tipo</th>
+                    <th className="text-left py-4 px-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest">Data</th>
+                    <th className="text-left py-4 px-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest">Motivo</th>
+                    <th className="text-left py-4 px-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest">Responsável</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sanctions.map((sanction) => (
+                    <tr key={sanction.id} className="border-b border-border hover:bg-muted/50 transition-colors">
+                      <td className="py-4 px-4">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
+                          sanction.tipo === 'Advertência' 
+                            ? 'bg-warning/10 text-warning' 
+                            : 'bg-destructive/10 text-destructive'
+                        }`}>
+                          {sanction.tipo}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-sm text-foreground">
+                        {new Date(sanction.data).toLocaleDateString('pt-BR')}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-foreground max-w-xs truncate">
+                        {sanction.motivo}
+                      </td>
+                      <td className="py-4 px-4 text-sm text-muted-foreground">
+                        {sanction.responsavel}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Add Sanction Modal */}
+        {showSanctionModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-card rounded-[2rem] p-6 md:p-8 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-300">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-black text-foreground">Nova Sanção</h3>
+                <button onClick={() => setShowSanctionModal(false)} className="p-2 hover:bg-muted rounded-xl transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
+                    Tipo de Penalidade *
+                  </label>
+                  <select
+                    value={sanctionForm.tipo}
+                    onChange={(e) => setSanctionForm({ ...sanctionForm, tipo: e.target.value as 'Advertência' | 'Suspensão' })}
+                    className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20 appearance-none cursor-pointer"
+                  >
+                    <option value="Advertência">Advertência</option>
+                    <option value="Suspensão">Suspensão</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
+                    Motivo *
+                  </label>
+                  <textarea
+                    value={sanctionForm.motivo}
+                    onChange={(e) => setSanctionForm({ ...sanctionForm, motivo: e.target.value })}
+                    placeholder="Descreva o motivo da penalidade..."
+                    rows={4}
+                    className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20 resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowSanctionModal(false)}
+                    className="flex-1 py-4 bg-muted text-muted-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-muted/80 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleAddSanction}
+                    disabled={!sanctionForm.motivo}
+                    className="flex-1 py-4 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                  >
+                    <CheckCircle size={16} />
+                    Registrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -141,7 +361,10 @@ const OSCModule: React.FC = () => {
               </div>
             </div>
 
-            <button className="w-full mt-6 md:mt-10 py-4 md:py-5 bg-muted text-muted-foreground rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-primary-foreground transition-all">
+            <button 
+              onClick={() => setSelectedOSC(osc)}
+              className="w-full mt-6 md:mt-10 py-4 md:py-5 bg-muted text-muted-foreground rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-primary-foreground transition-all"
+            >
               Acessar Dossiê de Habilitação
             </button>
           </div>
