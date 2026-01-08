@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Plus, Eye, FileSignature, ArrowLeft, Edit, CheckCircle, ClipboardList, AlertTriangle, X, Loader2, Calendar, DollarSign, ShieldCheck } from 'lucide-react';
+import { Plus, Eye, FileSignature, ArrowLeft, Edit, CheckCircle, ClipboardList, AlertTriangle, X, Loader2, Calendar, DollarSign, ShieldCheck, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { usePartnerships } from '@/hooks/usePartnerships';
 import { useOSCs } from '@/hooks/useOSCs';
 import { usePublicCalls } from '@/hooks/usePublicCalls';
 import WorkPlanEditor from './WorkPlanEditor';
+import jsPDF from 'jspdf';
 
 const StatusBadge = ({ status }: { status: string | null }) => {
   const styles: Record<string, string> = {
@@ -29,13 +30,14 @@ const StatusBadge = ({ status }: { status: string | null }) => {
 };
 
 const PartnershipsModule: React.FC = () => {
-  const { partnerships, loading, createPartnership } = usePartnerships();
+  const { partnerships, loading, createPartnership, updatePartnership } = usePartnerships();
   const { oscs, loading: loadingOscs } = useOSCs();
   const { publicCalls } = usePublicCalls();
   
   const [selectedPartnership, setSelectedPartnership] = useState<typeof partnerships[0] | null>(null);
-  const [view, setView] = useState<'list' | 'detail' | 'create'>('list');
+  const [view, setView] = useState<'list' | 'detail' | 'create' | 'workplan'>('list');
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     osc_id: '',
@@ -52,7 +54,7 @@ const PartnershipsModule: React.FC = () => {
     e.preventDefault();
     setSaving(true);
     
-    await createPartnership({
+    const result = await createPartnership({
       osc_id: formData.osc_id,
       numero_termo: formData.numero_termo || undefined,
       tipo_origem: formData.tipo_origem || undefined,
@@ -62,6 +64,13 @@ const PartnershipsModule: React.FC = () => {
       vigencia_fim: formData.vigencia_fim || undefined,
       public_call_id: formData.public_call_id || undefined,
     });
+    
+    if (!result.error) {
+      toast({ 
+        title: "Parceria cadastrada com sucesso!", 
+        description: `Instrumento ${formData.numero_termo || 'novo'} criado e adicionado à lista.` 
+      });
+    }
     
     setFormData({
       osc_id: '',
@@ -75,6 +84,68 @@ const PartnershipsModule: React.FC = () => {
     });
     setShowModal(false);
     setSaving(false);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPartnership) return;
+    setSaving(true);
+    
+    const result = await updatePartnership(selectedPartnership.id, {
+      numero_termo: formData.numero_termo || undefined,
+      tipo_origem: formData.tipo_origem || undefined,
+      status: formData.status || undefined,
+      valor_repassado: formData.valor_repassado ? parseFloat(formData.valor_repassado) : undefined,
+      vigencia_inicio: formData.vigencia_inicio || undefined,
+      vigencia_fim: formData.vigencia_fim || undefined,
+      public_call_id: formData.public_call_id || undefined,
+    });
+    
+    if (!result.error) {
+      toast({ title: "Parceria atualizada!", description: "Dados salvos com sucesso." });
+      setSelectedPartnership(result.data);
+    }
+    
+    setShowEditModal(false);
+    setSaving(false);
+  };
+
+  const openEditModal = () => {
+    if (!selectedPartnership) return;
+    setFormData({
+      osc_id: selectedPartnership.osc_id,
+      numero_termo: selectedPartnership.numero_termo || '',
+      tipo_origem: selectedPartnership.tipo_origem || 'chamamento',
+      status: selectedPartnership.status || 'planejamento',
+      valor_repassado: selectedPartnership.valor_repassado?.toString() || '',
+      vigencia_inicio: selectedPartnership.vigencia_inicio || '',
+      vigencia_fim: selectedPartnership.vigencia_fim || '',
+      public_call_id: selectedPartnership.public_call_id || '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleDownloadInstrument = () => {
+    if (!selectedPartnership) return;
+    
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('TERMO DE FOMENTO / COLABORAÇÃO', 105, 20, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text(`Nº: ${selectedPartnership.numero_termo || 'A DEFINIR'}`, 105, 30, { align: 'center' });
+    doc.line(20, 35, 190, 35);
+    
+    doc.setFontSize(10);
+    let y = 50;
+    doc.text(`OSC: ${selectedPartnership.osc?.razao_social || 'N/A'}`, 20, y);
+    doc.text(`CNPJ: ${selectedPartnership.osc?.cnpj || 'N/A'}`, 20, y + 8);
+    doc.text(`Origem: ${selectedPartnership.tipo_origem === 'chamamento' ? 'Chamamento Público' : selectedPartnership.tipo_origem === 'emenda' ? 'Emenda Parlamentar' : 'Dispensa de Chamamento'}`, 20, y + 16);
+    doc.text(`Valor: R$ ${(selectedPartnership.valor_repassado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, y + 24);
+    doc.text(`Vigência: ${selectedPartnership.vigencia_inicio ? new Date(selectedPartnership.vigencia_inicio).toLocaleDateString('pt-BR') : 'N/A'} até ${selectedPartnership.vigencia_fim ? new Date(selectedPartnership.vigencia_fim).toLocaleDateString('pt-BR') : 'N/A'}`, 20, y + 32);
+    doc.text(`Status: ${selectedPartnership.status || 'N/A'}`, 20, y + 40);
+    
+    doc.save(`instrumento_${selectedPartnership.numero_termo || 'parceria'}.pdf`);
+    toast({ title: "Download iniciado!", description: "Instrumento gerado em PDF." });
   };
 
   const getDaysRemaining = (endDate: string | null) => {
@@ -178,7 +249,10 @@ const PartnershipsModule: React.FC = () => {
               <ArrowLeft size={16} /> Voltar
             </button>
             <div className="flex flex-wrap gap-4">
-              <button className="px-6 py-3 bg-info/10 text-info rounded-xl font-black text-[10px] uppercase flex items-center gap-2">
+              <button 
+                onClick={openEditModal}
+                className="px-6 py-3 bg-info/10 text-info rounded-xl font-black text-[10px] uppercase flex items-center gap-2 hover:bg-info hover:text-info-foreground transition-all"
+              >
                 <Edit size={16} /> Editar
               </button>
               <label className="px-6 py-3 bg-success/10 text-success rounded-xl font-black text-[10px] uppercase flex items-center gap-2 cursor-pointer hover:bg-success/20 transition-colors">
@@ -187,8 +261,11 @@ const PartnershipsModule: React.FC = () => {
                   toast({ title: "Contrato enviado!", description: "Assinatura PAdES verificada com sucesso." });
                 }} />
               </label>
-              <button className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-black text-[10px] uppercase shadow-lg">
-                Baixar Instrumento
+              <button 
+                onClick={handleDownloadInstrument}
+                className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-black text-[10px] uppercase shadow-lg flex items-center gap-2 hover:opacity-90 transition-all"
+              >
+                <Download size={16} /> Baixar Instrumento
               </button>
             </div>
           </div>
@@ -387,6 +464,134 @@ const PartnershipsModule: React.FC = () => {
                 >
                   {saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
                   {saving ? 'Salvando...' : 'Cadastrar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Parceria */}
+      {showEditModal && selectedPartnership && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-[2rem] p-6 md:p-8 w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-black text-foreground">Editar Parceria</h3>
+              <button onClick={() => setShowEditModal(false)} className="p-2 hover:bg-muted rounded-xl transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="space-y-5">
+              <div>
+                <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
+                  OSC Parceira
+                </label>
+                <div className="w-full px-4 py-4 bg-muted/50 rounded-2xl text-sm text-muted-foreground">
+                  {selectedPartnership.osc?.razao_social || 'N/A'}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
+                  Número do Termo
+                </label>
+                <input
+                  type="text"
+                  value={formData.numero_termo}
+                  onChange={(e) => setFormData({ ...formData, numero_termo: e.target.value })}
+                  placeholder="Ex: TF-001/2024"
+                  className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
+                    Origem
+                  </label>
+                  <select
+                    value={formData.tipo_origem}
+                    onChange={(e) => setFormData({ ...formData, tipo_origem: e.target.value })}
+                    className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20 appearance-none cursor-pointer"
+                  >
+                    <option value="chamamento">Chamamento Público</option>
+                    <option value="emenda">Emenda Parlamentar</option>
+                    <option value="dispensa">Dispensa de Chamamento</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20 appearance-none cursor-pointer"
+                  >
+                    <option value="planejamento">Planejamento</option>
+                    <option value="celebracao">Celebração</option>
+                    <option value="execucao">Em Execução</option>
+                    <option value="prestacao_contas">Prestação de Contas</option>
+                    <option value="concluida">Concluída</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
+                  Valor Repassado
+                </label>
+                <input
+                  type="number"
+                  value={formData.valor_repassado}
+                  onChange={(e) => setFormData({ ...formData, valor_repassado: e.target.value })}
+                  placeholder="R$ 0,00"
+                  step="0.01"
+                  className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
+                    Início Vigência
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.vigencia_inicio}
+                    onChange={(e) => setFormData({ ...formData, vigencia_inicio: e.target.value })}
+                    className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
+                    Fim Vigência
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.vigencia_fim}
+                    onChange={(e) => setFormData({ ...formData, vigencia_fim: e.target.value })}
+                    className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 py-4 bg-muted text-muted-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-muted/80 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 py-4 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                >
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                  {saving ? 'Salvando...' : 'Salvar'}
                 </button>
               </div>
             </form>

@@ -1,8 +1,16 @@
 import React, { useState, useRef } from 'react';
-import { ClipboardList, Camera, CheckCircle2, XCircle, CreditCard, Plus, Upload, Loader2, X, AlertTriangle, FileText, DollarSign } from 'lucide-react';
+import { ClipboardList, Camera, CheckCircle2, XCircle, CreditCard, Plus, Upload, Loader2, X, AlertTriangle, FileText, DollarSign, Image, Trash2 } from 'lucide-react';
 import { useTransactions } from '@/hooks/useTransactions';
 import { usePartnerships } from '@/hooks/usePartnerships';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+
+interface EvidenceFile {
+  id: string;
+  url: string;
+  name: string;
+  type: 'antes' | 'durante' | 'depois';
+}
 
 const AccountabilityModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'REO' | 'REFF'>('REO');
@@ -12,10 +20,13 @@ const AccountabilityModule: React.FC = () => {
   
   const [showModal, setShowModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
+  const [showEvidenceModal, setShowEvidenceModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const evidenceInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     data_transacao: '',
@@ -25,6 +36,10 @@ const AccountabilityModule: React.FC = () => {
     fornecedor: '',
   });
   const [uploadedFile, setUploadedFile] = useState<{ url: string; name: string } | null>(null);
+  
+  // Evidence files state
+  const [evidenceFiles, setEvidenceFiles] = useState<EvidenceFile[]>([]);
+  const [currentEvidenceType, setCurrentEvidenceType] = useState<'antes' | 'durante' | 'depois'>('antes');
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,6 +67,69 @@ const AccountabilityModule: React.FC = () => {
     
     setUploadedFile({ url: publicUrl, name: file.name });
     setUploading(false);
+  };
+
+  const handleEvidenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedPartnershipId) return;
+    
+    // Check if we already have 3 evidences of this type
+    const existingOfType = evidenceFiles.filter(f => f.type === currentEvidenceType);
+    if (existingOfType.length >= 1) {
+      toast({ 
+        title: "Limite atingido", 
+        description: `Já existe uma evidência do tipo "${currentEvidenceType}". Remova a existente primeiro.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setUploadingEvidence(true);
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${selectedPartnershipId}/${currentEvidenceType}-${Date.now()}.${fileExt}`;
+    const filePath = `evidencias/${fileName}`;
+    
+    const { error } = await supabase.storage
+      .from('documents')
+      .upload(filePath, file);
+    
+    if (error) {
+      console.error('Error uploading evidence:', error);
+      toast({ title: "Erro no upload", description: error.message, variant: "destructive" });
+      setUploadingEvidence(false);
+      return;
+    }
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('documents')
+      .getPublicUrl(filePath);
+    
+    setEvidenceFiles(prev => [...prev, {
+      id: `${Date.now()}`,
+      url: publicUrl,
+      name: file.name,
+      type: currentEvidenceType
+    }]);
+    
+    toast({ 
+      title: "Evidência enviada!", 
+      description: `Foto "${currentEvidenceType}" salva com sucesso.` 
+    });
+    
+    setUploadingEvidence(false);
+    if (evidenceInputRef.current) evidenceInputRef.current.value = '';
+  };
+
+  const removeEvidence = (id: string) => {
+    setEvidenceFiles(prev => prev.filter(f => f.id !== id));
+  };
+
+  const getEvidenceCount = () => {
+    const antes = evidenceFiles.filter(f => f.type === 'antes').length;
+    const durante = evidenceFiles.filter(f => f.type === 'durante').length;
+    const depois = evidenceFiles.filter(f => f.type === 'depois').length;
+    return { antes, durante, depois, total: antes + durante + depois };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -221,16 +299,48 @@ const AccountabilityModule: React.FC = () => {
                       <Camera size={28} />
                     </div>
                     <h4 className="text-lg md:text-xl font-black text-foreground mb-2">Evidências Fotográficas</h4>
-                    <p className="text-xs text-muted-foreground font-medium mb-6">Insira fotos do evento, listas de presença e relatórios de atividades.</p>
-                    <button className="px-6 md:px-8 py-3 md:py-4 bg-primary text-primary-foreground rounded-2xl font-black text-[10px] uppercase">
-                      Upload de Arquivos
+                    <p className="text-xs text-muted-foreground font-medium mb-4">
+                      Obrigatório: 3 fotos (antes, durante e depois)
+                    </p>
+                    
+                    {/* Evidence status */}
+                    <div className="flex gap-2 mb-6">
+                      {['antes', 'durante', 'depois'].map((type) => {
+                        const hasEvidence = evidenceFiles.some(f => f.type === type);
+                        return (
+                          <span 
+                            key={type}
+                            className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase ${
+                              hasEvidence 
+                                ? 'bg-success/10 text-success border border-success/20' 
+                                : 'bg-muted text-muted-foreground border border-border'
+                            }`}
+                          >
+                            {type} {hasEvidence && '✓'}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    
+                    <button 
+                      onClick={() => setShowEvidenceModal(true)}
+                      className="px-6 md:px-8 py-3 md:py-4 bg-primary text-primary-foreground rounded-2xl font-black text-[10px] uppercase hover:opacity-90 transition-all flex items-center gap-2"
+                    >
+                      <Upload size={16} /> Upload de Arquivos
                     </button>
+                    
+                    {getEvidenceCount().total > 0 && (
+                      <p className="text-xs text-success font-bold mt-4">
+                        {getEvidenceCount().total}/3 evidências enviadas
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-6">
                     <h4 className="text-lg md:text-xl font-black text-foreground">Metas da Parceria</h4>
                     <div className="text-center py-8 text-muted-foreground">
                       <FileText className="mx-auto mb-3 opacity-30" size={40} />
                       <p className="text-sm">Metas serão exibidas após configuração do Plano de Trabalho.</p>
+                      <p className="text-xs mt-2">Configure em: <span className="text-primary font-bold">Parcerias → Selecionar Parceria → Plano de Trabalho</span></p>
                     </div>
                   </div>
                 </div>
@@ -514,6 +624,128 @@ const AccountabilityModule: React.FC = () => {
                   Confirmar Glosa
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Evidências Fotográficas */}
+      {showEvidenceModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-[2rem] p-6 md:p-8 w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-black text-foreground flex items-center gap-2">
+                <Camera className="text-primary" size={20} />
+                Upload de Evidências
+              </h3>
+              <button onClick={() => setShowEvidenceModal(false)} className="p-2 hover:bg-muted rounded-xl transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            <p className="text-sm text-muted-foreground mb-6">
+              Envie 3 fotos obrigatórias: <strong>antes</strong>, <strong>durante</strong> e <strong>depois</strong> da execução da atividade.
+            </p>
+
+            {/* Select evidence type */}
+            <div className="mb-6">
+              <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3">
+                Tipo de Evidência
+              </label>
+              <div className="flex gap-3">
+                {(['antes', 'durante', 'depois'] as const).map((type) => {
+                  const hasEvidence = evidenceFiles.some(f => f.type === type);
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => setCurrentEvidenceType(type)}
+                      disabled={hasEvidence}
+                      className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase transition-all ${
+                        currentEvidenceType === type 
+                          ? 'bg-primary text-primary-foreground shadow-lg' 
+                          : hasEvidence
+                            ? 'bg-success/10 text-success border border-success/20 cursor-not-allowed'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      {type} {hasEvidence && '✓'}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Upload area */}
+            <div className="border-2 border-dashed border-border rounded-2xl p-8 text-center mb-6 hover:border-primary/50 transition-colors">
+              <input
+                ref={evidenceInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleEvidenceUpload}
+                className="hidden"
+                id="evidence-upload"
+              />
+              <label 
+                htmlFor="evidence-upload" 
+                className="cursor-pointer flex flex-col items-center"
+              >
+                {uploadingEvidence ? (
+                  <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+                ) : (
+                  <Image className="w-12 h-12 text-muted-foreground mb-4" />
+                )}
+                <p className="text-sm font-bold text-foreground mb-2">
+                  {uploadingEvidence ? 'Enviando...' : `Clique para enviar foto "${currentEvidenceType}"`}
+                </p>
+                <p className="text-xs text-muted-foreground">JPG, PNG ou WEBP (máx 5MB)</p>
+              </label>
+            </div>
+
+            {/* Uploaded evidences */}
+            {evidenceFiles.length > 0 && (
+              <div className="space-y-3 mb-6">
+                <h4 className="text-sm font-black text-foreground">Evidências Enviadas</h4>
+                <div className="grid grid-cols-3 gap-4">
+                  {evidenceFiles.map((file) => (
+                    <div key={file.id} className="relative group">
+                      <img 
+                        src={file.url} 
+                        alt={file.name}
+                        className="w-full h-24 object-cover rounded-xl border border-border"
+                      />
+                      <span className="absolute top-2 left-2 px-2 py-1 bg-black/70 text-white text-[9px] font-black uppercase rounded-lg">
+                        {file.type}
+                      </span>
+                      <button
+                        onClick={() => removeEvidence(file.id)}
+                        className="absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowEvidenceModal(false)}
+                className="flex-1 py-4 bg-muted text-muted-foreground rounded-2xl font-black text-xs uppercase tracking-widest"
+              >
+                Fechar
+              </button>
+              {getEvidenceCount().total === 3 && (
+                <button
+                  onClick={() => {
+                    toast({ title: "Evidências salvas!", description: "Todas as 3 fotos obrigatórias foram enviadas." });
+                    setShowEvidenceModal(false);
+                  }}
+                  className="flex-1 py-4 bg-success text-success-foreground rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 size={16} /> Confirmar Evidências
+                </button>
+              )}
             </div>
           </div>
         </div>
