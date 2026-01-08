@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Plus, Trash2, ArrowLeft, Sparkles, CheckCircle, Loader2, Send, Calendar, DollarSign, Users } from 'lucide-react';
+import { Save, Plus, Trash2, ArrowLeft, Sparkles, CheckCircle, Loader2, Send, Calendar, DollarSign, Users, XCircle, MessageSquare, AlertTriangle } from 'lucide-react';
 import { useWorkPlans, WorkPlanMeta, WorkPlanCronograma, WorkPlanOrcamento } from '@/hooks/useWorkPlans';
 import { usePartnerships, Partnership } from '@/hooks/usePartnerships';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 interface WorkPlanEditorProps {
   onBack: () => void;
   partnershipId?: string;
   partnership?: Partnership;
+  isGestor?: boolean; // New prop to enable approval mode
 }
 
-const WorkPlanEditor: React.FC<WorkPlanEditorProps> = ({ onBack, partnershipId, partnership }) => {
-  const { workPlan, loading, createWorkPlan, updateWorkPlan, submitForApproval } = useWorkPlans(partnershipId);
+const WorkPlanEditor: React.FC<WorkPlanEditorProps> = ({ onBack, partnershipId, partnership, isGestor = false }) => {
+  const { workPlan, loading, createWorkPlan, updateWorkPlan, submitForApproval, approveWorkPlan, refetch } = useWorkPlans(partnershipId);
   const [activeStep, setActiveStep] = useState(1);
   const [saving, setSaving] = useState(false);
   
@@ -21,6 +23,12 @@ const WorkPlanEditor: React.FC<WorkPlanEditorProps> = ({ onBack, partnershipId, 
   const [metas, setMetas] = useState<WorkPlanMeta[]>([]);
   const [cronograma, setCronograma] = useState<WorkPlanCronograma[]>([]);
   const [orcamento, setOrcamento] = useState<WorkPlanOrcamento[]>([]);
+  
+  // Approval flow state
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [approvalAction, setApprovalAction] = useState<'aprovar' | 'ajuste' | 'rejeitar'>('aprovar');
+  const [approvalNote, setApprovalNote] = useState('');
+  const [processingApproval, setProcessingApproval] = useState(false);
 
   // Load existing work plan data
   useEffect(() => {
@@ -137,6 +145,55 @@ const WorkPlanEditor: React.FC<WorkPlanEditorProps> = ({ onBack, partnershipId, 
     return metas.reduce((sum, m) => sum + (m.meta_quantidade * m.valor_unitario), 0);
   };
 
+  const handleApprovalAction = async () => {
+    if (!workPlan) return;
+    
+    setProcessingApproval(true);
+    
+    let newStatus = '';
+    let toastMessage = '';
+    
+    switch (approvalAction) {
+      case 'aprovar':
+        newStatus = 'aprovado';
+        toastMessage = 'Plano de Trabalho aprovado com sucesso!';
+        break;
+      case 'ajuste':
+        newStatus = 'ajuste_solicitado';
+        toastMessage = 'Solicitação de ajuste enviada à OSC.';
+        break;
+      case 'rejeitar':
+        newStatus = 'rejeitado';
+        toastMessage = 'Plano de Trabalho rejeitado.';
+        break;
+    }
+    
+    const { data: userData } = await supabase.auth.getUser();
+    
+    const result = await updateWorkPlan(workPlan.id, {
+      status: newStatus,
+      observacoes: approvalNote || workPlan.observacoes || undefined,
+      ...(approvalAction === 'aprovar' ? {
+        approved_by: userData.user?.id,
+        approved_at: new Date().toISOString(),
+      } : {}),
+    });
+    
+    setProcessingApproval(false);
+    setShowApprovalModal(false);
+    setApprovalNote('');
+    
+    if (result.error) {
+      toast({ title: "Erro", description: result.error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Sucesso", description: toastMessage });
+      refetch();
+    }
+  };
+
+  const canEdit = !workPlan || ['rascunho', 'ajuste_solicitado'].includes(workPlan.status || '');
+  const canApprove = isGestor && workPlan?.status === 'enviado';
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -164,37 +221,86 @@ const WorkPlanEditor: React.FC<WorkPlanEditorProps> = ({ onBack, partnershipId, 
           </div>
         </div>
         <div className="flex gap-3 flex-wrap">
-          <button 
-            onClick={() => handleSave(false)}
-            disabled={saving}
-            className="px-6 py-3 bg-muted text-muted-foreground rounded-2xl font-black text-[10px] uppercase flex items-center gap-2 hover:bg-muted/80 transition-all disabled:opacity-50"
-          >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-            Salvar Rascunho
-          </button>
-          <button 
-            onClick={() => handleSave(true)}
-            disabled={saving || metas.length === 0}
-            className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-black text-[10px] uppercase shadow-xl flex items-center gap-2 hover:opacity-90 transition-all disabled:opacity-50"
-          >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-            Enviar para Aprovação
-          </button>
+          {/* OSC actions - Save and Submit */}
+          {canEdit && (
+            <>
+              <button 
+                onClick={() => handleSave(false)}
+                disabled={saving}
+                className="px-6 py-3 bg-muted text-muted-foreground rounded-2xl font-black text-[10px] uppercase flex items-center gap-2 hover:bg-muted/80 transition-all disabled:opacity-50"
+              >
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                Salvar Rascunho
+              </button>
+              <button 
+                onClick={() => handleSave(true)}
+                disabled={saving || metas.length === 0}
+                className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-black text-[10px] uppercase shadow-xl flex items-center gap-2 hover:opacity-90 transition-all disabled:opacity-50"
+              >
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                Enviar para Aprovação
+              </button>
+            </>
+          )}
+          
+          {/* Gestor approval actions */}
+          {canApprove && (
+            <div className="flex gap-2">
+              <button 
+                onClick={() => { setApprovalAction('aprovar'); setShowApprovalModal(true); }}
+                className="px-6 py-3 bg-success text-success-foreground rounded-2xl font-black text-[10px] uppercase shadow-xl flex items-center gap-2 hover:opacity-90 transition-all"
+              >
+                <CheckCircle size={14} />
+                Aprovar
+              </button>
+              <button 
+                onClick={() => { setApprovalAction('ajuste'); setShowApprovalModal(true); }}
+                className="px-6 py-3 bg-warning text-warning-foreground rounded-2xl font-black text-[10px] uppercase flex items-center gap-2 hover:opacity-90 transition-all"
+              >
+                <MessageSquare size={14} />
+                Solicitar Ajustes
+              </button>
+              <button 
+                onClick={() => { setApprovalAction('rejeitar'); setShowApprovalModal(true); }}
+                className="px-6 py-3 bg-destructive text-destructive-foreground rounded-2xl font-black text-[10px] uppercase flex items-center gap-2 hover:opacity-90 transition-all"
+              >
+                <XCircle size={14} />
+                Rejeitar
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
       {/* Status badge */}
       {workPlan && (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <span className={`px-4 py-2 rounded-full text-[10px] font-black uppercase ${
             workPlan.status === 'aprovado' ? 'bg-success/10 text-success' :
             workPlan.status === 'enviado' ? 'bg-info/10 text-info' :
             workPlan.status === 'rejeitado' ? 'bg-destructive/10 text-destructive' :
+            workPlan.status === 'ajuste_solicitado' ? 'bg-warning/10 text-warning' :
             'bg-muted text-muted-foreground'
           }`}>
-            Status: {workPlan.status || 'Rascunho'}
+            Status: {
+              workPlan.status === 'ajuste_solicitado' ? 'Ajuste Solicitado' :
+              workPlan.status === 'enviado' ? 'Aguardando Aprovação' :
+              workPlan.status || 'Rascunho'
+            }
           </span>
           <span className="text-xs text-muted-foreground">Versão {workPlan.version}</span>
+          
+          {workPlan.status === 'ajuste_solicitado' && workPlan.observacoes && (
+            <div className="w-full mt-2 p-4 bg-warning/10 border border-warning/20 rounded-xl">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={16} className="text-warning shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-warning">Ajuste Solicitado pelo Gestor:</p>
+                  <p className="text-xs text-foreground mt-1">{workPlan.observacoes}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -516,6 +622,77 @@ const WorkPlanEditor: React.FC<WorkPlanEditorProps> = ({ onBack, partnershipId, 
           </div>
         )}
       </div>
+      
+      {/* Approval Modal */}
+      {showApprovalModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-[2rem] p-6 md:p-8 w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-black text-foreground flex items-center gap-2">
+                {approvalAction === 'aprovar' && <CheckCircle className="text-success" size={24} />}
+                {approvalAction === 'ajuste' && <MessageSquare className="text-warning" size={24} />}
+                {approvalAction === 'rejeitar' && <XCircle className="text-destructive" size={24} />}
+                {approvalAction === 'aprovar' ? 'Aprovar Plano' : 
+                 approvalAction === 'ajuste' ? 'Solicitar Ajustes' : 'Rejeitar Plano'}
+              </h3>
+              <button 
+                onClick={() => setShowApprovalModal(false)} 
+                className="p-2 hover:bg-muted rounded-xl transition-colors"
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {approvalAction === 'aprovar' 
+                  ? 'Confirma a aprovação do Plano de Trabalho? As metas estarão disponíveis para acompanhamento na aba REO.'
+                  : approvalAction === 'ajuste'
+                  ? 'Descreva os ajustes necessários. A OSC receberá esta mensagem e poderá editar o plano.'
+                  : 'Informe o motivo da rejeição. A OSC será notificada.'}
+              </p>
+              
+              {(approvalAction === 'ajuste' || approvalAction === 'rejeitar') && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                    {approvalAction === 'ajuste' ? 'Ajustes Necessários *' : 'Motivo da Rejeição *'}
+                  </label>
+                  <textarea
+                    value={approvalNote}
+                    onChange={(e) => setApprovalNote(e.target.value)}
+                    placeholder={approvalAction === 'ajuste' 
+                      ? 'Descreva quais ajustes devem ser feitos...' 
+                      : 'Informe o motivo da rejeição...'}
+                    rows={4}
+                    className="w-full p-4 bg-muted rounded-xl outline-none font-medium text-foreground focus:ring-2 focus:ring-primary/20 resize-none"
+                  />
+                </div>
+              )}
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => setShowApprovalModal(false)}
+                  className="flex-1 px-6 py-3 bg-muted text-muted-foreground rounded-xl font-bold text-sm hover:bg-muted/80 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleApprovalAction}
+                  disabled={processingApproval || ((approvalAction === 'ajuste' || approvalAction === 'rejeitar') && !approvalNote.trim())}
+                  className={`flex-1 px-6 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
+                    approvalAction === 'aprovar' ? 'bg-success text-success-foreground' :
+                    approvalAction === 'ajuste' ? 'bg-warning text-warning-foreground' :
+                    'bg-destructive text-destructive-foreground'
+                  }`}
+                >
+                  {processingApproval && <Loader2 size={16} className="animate-spin" />}
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

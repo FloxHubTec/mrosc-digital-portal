@@ -4,6 +4,8 @@ import { toast } from '@/hooks/use-toast';
 import { usePartnerships } from '@/hooks/usePartnerships';
 import { useOSCs } from '@/hooks/useOSCs';
 import { usePublicCalls } from '@/hooks/usePublicCalls';
+import { useAuth, getRoleEnum } from '@/hooks/useAuth';
+import { UserRole } from '@/types';
 import WorkPlanEditor from './WorkPlanEditor';
 import jsPDF from 'jspdf';
 
@@ -33,6 +35,11 @@ const PartnershipsModule: React.FC = () => {
   const { partnerships, loading, createPartnership, updatePartnership } = usePartnerships();
   const { oscs, loading: loadingOscs } = useOSCs();
   const { publicCalls } = usePublicCalls();
+  const { profile } = useAuth();
+  
+  // Check if user is government staff (gestor)
+  const currentRole = profile?.role ? getRoleEnum(profile.role) : UserRole.OSC_USER;
+  const isGestor = ![UserRole.OSC_LEGAL, UserRole.OSC_USER].includes(currentRole);
   
   const [selectedPartnership, setSelectedPartnership] = useState<typeof partnerships[0] | null>(null);
   const [view, setView] = useState<'list' | 'detail' | 'create' | 'workplan'>('list');
@@ -170,6 +177,7 @@ const PartnershipsModule: React.FC = () => {
         onBack={() => setView('detail')} 
         partnershipId={selectedPartnership.id}
         partnership={selectedPartnership}
+        isGestor={isGestor}
       />
     );
   }
