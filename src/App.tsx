@@ -177,15 +177,6 @@ const MainApp: React.FC = () => {
           <SidebarItem to="/transparency" icon={Eye} label="Portal Público" active={false} />
         </nav>
 
-        <div className="px-4 py-4 text-[10px] font-bold text-sidebar-primary uppercase tracking-widest mt-2 border-t border-sidebar-border pt-6">Controle e Ajuda</div>
-        <nav className="px-4 space-y-1 mb-24">
-          <SidebarItem to="/logs" icon={History} label="Audit Trail (LGPD)" active={location.pathname === '/logs'} hidden={!canAccess('/logs')} />
-          <SidebarItem to="/support" icon={HelpCircle} label="Suporte" active={location.pathname === '/support'} />
-          <SidebarItem to="/integrations" icon={Link2} label="Integrações" active={location.pathname === '/integrations'} hidden={!canAccess('/integrations')} />
-          <SidebarItem to="/manual" icon={BookOpen} label="Manual do Sistema" active={location.pathname === '/manual'} />
-          <SidebarItem to="/transparency" icon={Eye} label="Portal Público" active={false} />
-        </nav>
-
         <div className="absolute bottom-0 left-0 right-0 p-4 bg-sidebar-accent border-t border-sidebar-border">
           <div className="flex items-center space-x-3">
             <div className="w-9 h-9 rounded-xl bg-sidebar-primary flex items-center justify-center font-bold text-sm text-sidebar-primary-foreground uppercase">{currentUser.name.substring(0,2)}</div>
