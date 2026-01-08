@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Activity,
   FileText,
@@ -16,8 +16,9 @@ import {
   History,
   DollarSign,
   Scale,
+  X,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   BarChart,
   Bar,
@@ -32,6 +33,9 @@ import {
 } from "recharts";
 import { User } from "../services/authContext";
 import { UserRole } from "../types";
+import ExportDropdown from "./ui/ExportDropdown";
+import { exportData, ExportFormat } from "@/utils/exportUtils";
+import { toast } from "sonner";
 
 const data = [
   { name: "Jan", valor: 420000 },
@@ -50,8 +54,28 @@ const pieData = [
   { name: "Prazos Vencidos", value: 10 },
 ];
 
-const StatCard = ({ title, value, icon: Icon, color, trend, pulse }: any) => (
-  <div className="bg-card p-8 rounded-[2.5rem] shadow-sm border border-border hover:shadow-xl transition-all relative overflow-hidden group">
+// Dados mock de alertas críticos
+const criticalAlerts = [
+  { id: '1', title: 'Prestação de Contas Vencida', entity: 'OSC Vida Nova', deadline: '05/01/2026', type: 'contas' },
+  { id: '2', title: 'CND Federal Expirada', entity: 'Assoc. Verde Cidade', deadline: '02/01/2026', type: 'certidao' },
+  { id: '3', title: 'Prazo de Vigência Esgotando', entity: 'Instituto Esperança', deadline: '15/01/2026', type: 'vigencia' },
+];
+
+interface StatCardProps {
+  title: string;
+  value: string;
+  icon: React.ElementType;
+  color: string;
+  trend?: { value: number; positive: boolean };
+  pulse?: boolean;
+  onClick?: () => void;
+}
+
+const StatCard = ({ title, value, icon: Icon, color, trend, pulse, onClick }: StatCardProps) => (
+  <div 
+    onClick={onClick}
+    className={`bg-card p-8 rounded-[2.5rem] shadow-sm border border-border hover:shadow-xl transition-all relative overflow-hidden group ${onClick ? 'cursor-pointer' : ''}`}
+  >
     {pulse && (
       <div className="absolute top-4 right-4 flex h-3 w-3">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
@@ -85,7 +109,39 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user }) => {
+  const navigate = useNavigate();
+  const [showAlerts, setShowAlerts] = useState(false);
   const isOSC = user.role === UserRole.OSC_LEGAL || user.role === UserRole.OSC_USER;
+
+  const handleExportSICOM = (format: ExportFormat) => {
+    const headers = ['Mês', 'Valor Repassado', 'Parcerias Ativas', 'Metas Cumpridas'];
+    const sicomData = [
+      ['Janeiro/2026', 'R$ 420.000,00', '114', '89%'],
+      ['Fevereiro/2026', 'R$ 380.000,00', '112', '92%'],
+      ['Março/2026', 'R$ 510.000,00', '118', '87%'],
+      ['Abril/2026', 'R$ 490.000,00', '116', '91%'],
+      ['Maio/2026', 'R$ 620.000,00', '120', '94%'],
+      ['Junho/2026', 'R$ 580.000,00', '114', '90%'],
+    ];
+    
+    exportData(format, {
+      filename: `SICOM_MROSC_${new Date().toISOString().split('T')[0]}`,
+      title: 'Relatório SICOM - Sistema MROSC Unaí/MG',
+      headers,
+      data: sicomData,
+    });
+    
+    toast.success(`Relatório SICOM exportado em ${format.toUpperCase()}`);
+  };
+
+  const getAlertTypeStyle = (type: string) => {
+    switch (type) {
+      case 'contas': return 'bg-destructive/10 text-destructive';
+      case 'certidao': return 'bg-warning/10 text-warning';
+      case 'vigencia': return 'bg-info/10 text-info';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
@@ -103,14 +159,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         <div className="flex gap-4 w-full md:w-auto">
           <Link
             to="/transparency"
-            className="flex-1 md:flex-none px-8 py-4 bg-card border border-border rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-muted flex items-center justify-center gap-3 transition-all shadow-sm"
+            className="flex-1 md:flex-none px-8 py-4 bg-card border border-border rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-muted flex items-center justify-center gap-3 transition-all shadow-sm text-foreground"
           >
             <ShieldCheck size={18} /> Transparência
           </Link>
           {!isOSC && (
-            <button className="flex-1 md:flex-none px-8 py-4 bg-primary text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-widest hover:opacity-90 flex items-center justify-center gap-3 shadow-2xl shadow-primary/30 transition-all active:scale-95">
-              <FileBarChart size={18} /> Exportar SICOM
-            </button>
+            <ExportDropdown onExport={handleExportSICOM} className="flex-1 md:flex-none" />
           )}
         </div>
       </header>
@@ -122,10 +176,30 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           icon={Activity}
           color="teal"
           trend={{ value: 8, positive: true }}
+          onClick={() => navigate('/parcerias')}
         />
-        <StatCard title="Emendas Alocadas" value="R$ 1.8M" icon={DollarSign} color="indigo" />
-        <StatCard title="Chamamentos" value="05" icon={Megaphone} color="blue" />
-        <StatCard title="Alertas Críticos" value="03" icon={AlertTriangle} color="amber" pulse={true} />
+        <StatCard 
+          title="Emendas Alocadas" 
+          value="R$ 1.8M" 
+          icon={DollarSign} 
+          color="indigo" 
+          onClick={() => navigate('/emendas')}
+        />
+        <StatCard 
+          title="Chamamentos" 
+          value="05" 
+          icon={Megaphone} 
+          color="blue" 
+          onClick={() => navigate('/chamamento')}
+        />
+        <StatCard 
+          title="Alertas Críticos" 
+          value="03" 
+          icon={AlertTriangle} 
+          color="amber" 
+          pulse={true} 
+          onClick={() => setShowAlerts(true)}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -202,33 +276,86 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       </div>
 
       {!isOSC && (
-        <div className="bg-sidebar-background p-12 rounded-[4rem] text-sidebar-foreground flex flex-col md:flex-row items-center justify-between gap-12 relative overflow-hidden group shadow-2xl">
-          <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none group-hover:scale-150 transition-transform duration-1000">
-            <History size={250} />
+        <div className="bg-primary p-12 rounded-[4rem] flex flex-col md:flex-row items-center justify-between gap-12 relative overflow-hidden group shadow-2xl">
+          <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none group-hover:scale-150 transition-transform duration-1000">
+            <History size={250} className="text-primary-foreground" />
           </div>
           <div className="max-w-xl relative z-10">
-            <h4 className="text-3xl font-black mb-6 flex items-center gap-4">
-              <Scale className="text-sidebar-primary" /> Auditoria Imutável
+            <h4 className="text-3xl font-black mb-6 flex items-center gap-4 text-primary-foreground">
+              <Scale className="text-primary-foreground/80" /> Auditoria Imutável
             </h4>
-            <p className="text-sidebar-foreground/60 font-medium leading-relaxed mb-10">
+            <p className="text-primary-foreground/70 font-medium leading-relaxed mb-10">
               Todos os atos decisórios, parcerias celebradas e transferências são registrados com rastreabilidade total
               (Audit Trail), garantindo integridade para o Tribunal de Contas (SICOM) e órgãos externos.
             </p>
             <Link
               to="/logs"
-              className="px-10 py-5 bg-sidebar-accent hover:opacity-90 rounded-2xl text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-3 transition-all"
+              className="px-10 py-5 bg-primary-foreground text-primary hover:opacity-90 rounded-2xl text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-3 transition-all"
             >
               Acessar Trilha de Auditoria <History size={16} />
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-4 relative z-10">
-            <div className="p-6 bg-sidebar-foreground/5 backdrop-blur-md rounded-3xl border border-sidebar-foreground/10 text-center">
-              <span className="block text-[9px] font-black text-sidebar-primary uppercase mb-2">Logs Hoje</span>
-              <span className="text-2xl font-black">1.242</span>
+            <div className="p-6 bg-primary-foreground/10 backdrop-blur-md rounded-3xl border border-primary-foreground/20 text-center">
+              <span className="block text-[9px] font-black text-primary-foreground/80 uppercase mb-2">Logs Hoje</span>
+              <span className="text-2xl font-black text-primary-foreground">1.242</span>
             </div>
-            <div className="p-6 bg-sidebar-foreground/5 backdrop-blur-md rounded-3xl border border-sidebar-foreground/10 text-center">
-              <span className="block text-[9px] font-black text-sidebar-primary uppercase mb-2">Integridade</span>
-              <span className="text-2xl font-black">100%</span>
+            <div className="p-6 bg-primary-foreground/10 backdrop-blur-md rounded-3xl border border-primary-foreground/20 text-center">
+              <span className="block text-[9px] font-black text-primary-foreground/80 uppercase mb-2">Integridade</span>
+              <span className="text-2xl font-black text-primary-foreground">100%</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Alertas Críticos */}
+      {showAlerts && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-[2rem] p-6 md:p-8 w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-destructive/10 rounded-xl">
+                  <AlertTriangle className="text-destructive" size={24} />
+                </div>
+                <h3 className="text-2xl font-black text-foreground">Alertas Críticos</h3>
+              </div>
+              <button 
+                onClick={() => setShowAlerts(false)} 
+                className="p-2 hover:bg-muted rounded-xl transition-colors text-muted-foreground"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {criticalAlerts.map((alert) => (
+                <div 
+                  key={alert.id} 
+                  className="p-5 bg-muted rounded-2xl border border-border hover:border-primary/30 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <h4 className="font-black text-foreground text-sm mb-1">{alert.title}</h4>
+                      <p className="text-xs text-muted-foreground">{alert.entity}</p>
+                    </div>
+                    <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase ${getAlertTypeStyle(alert.type)}`}>
+                      {alert.deadline}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-border">
+              <button
+                onClick={() => {
+                  setShowAlerts(false);
+                  navigate('/parcerias');
+                }}
+                className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all"
+              >
+                Ver Todas as Parcerias
+              </button>
             </div>
           </div>
         </div>

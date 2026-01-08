@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Megaphone, Plus, Search, FileText, Filter, ChevronRight, Clock, X, Loader2, CheckCircle } from 'lucide-react';
+import { Megaphone, Plus, Search, FileText, Filter, ChevronRight, Clock, X, Loader2, CheckCircle, ChevronDown } from 'lucide-react';
 import { usePublicCalls } from '@/hooks/usePublicCalls';
 
 const ChamamentoModule: React.FC = () => {
@@ -7,6 +7,8 @@ const ChamamentoModule: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterStatus, setFilterStatus] = useState('');
   const [formData, setFormData] = useState({
     numero_edital: '',
     objeto: '',
@@ -16,10 +18,21 @@ const ChamamentoModule: React.FC = () => {
     valor_total: '',
   });
 
-  const filteredCalls = publicCalls.filter(c => 
-    c.numero_edital.toLowerCase().includes(search.toLowerCase()) ||
-    c.objeto.toLowerCase().includes(search.toLowerCase())
-  );
+  const statusOptions = [
+    { value: '', label: 'Todos os Status' },
+    { value: 'aberto', label: 'Aberto' },
+    { value: 'em_julgamento', label: 'Em Julgamento' },
+    { value: 'homologado', label: 'Homologado' },
+    { value: 'suspenso', label: 'Suspenso' },
+    { value: 'encerrado', label: 'Encerrado' },
+  ];
+
+  const filteredCalls = publicCalls.filter(c => {
+    const matchesSearch = c.numero_edital.toLowerCase().includes(search.toLowerCase()) ||
+                          c.objeto.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = !filterStatus || c.status === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,7 +94,7 @@ const ChamamentoModule: React.FC = () => {
         <div>
           <div className="flex items-center space-x-2 text-[10px] font-black text-primary uppercase tracking-widest mb-3">
             <Megaphone size={14} />
-            <span>Processos de Seleção Pública (POC Item 26)</span>
+            <span>Processos de Seleção Pública</span>
           </div>
           <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tighter">Chamamentos e Editais</h2>
           <p className="text-muted-foreground font-medium">Gestão do fluxo seletivo conforme Art. 23 da Lei 13.019/14.</p>
@@ -95,7 +108,6 @@ const ChamamentoModule: React.FC = () => {
         </button>
       </header>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         {stats.map((item, i) => (
           <div key={i} className="bg-card p-6 rounded-3xl border border-border shadow-sm flex items-center justify-between">
@@ -110,20 +122,56 @@ const ChamamentoModule: React.FC = () => {
         ))}
       </div>
 
-      {/* Table */}
       <div className="bg-card rounded-[2rem] md:rounded-[2.5rem] shadow-xl shadow-muted/50 border border-border overflow-hidden">
         <div className="p-4 md:p-8 border-b border-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-muted/20">
-          <div className="relative w-full md:w-auto">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-            <input 
-              type="text" 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Pesquisar edital..." 
-              className="pl-12 pr-6 py-3 bg-card border border-border rounded-2xl text-xs outline-none focus:ring-4 focus:ring-primary/10 w-full md:w-64"
-            />
+          <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+            <div className="relative w-full md:w-auto">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+              <input 
+                type="text" 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Pesquisar edital..." 
+                className="pl-12 pr-6 py-3 bg-card border border-border rounded-2xl text-xs outline-none focus:ring-4 focus:ring-primary/10 w-full md:w-64 text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
+            <div className="relative">
+              <button 
+                onClick={() => setShowFilters(!showFilters)}
+                className="p-3 bg-card border border-border rounded-2xl text-muted-foreground hover:text-primary hover:border-primary/30 transition-all flex items-center gap-2"
+              >
+                <Filter size={18} />
+                <span className="text-xs font-bold">Filtros</span>
+                <ChevronDown size={14} className={`transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showFilters && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowFilters(false)} />
+                  <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl z-50 p-4 min-w-[200px] animate-in fade-in slide-in-from-top-2">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-xs font-black uppercase text-foreground">Filtrar Status</span>
+                      <button onClick={() => setShowFilters(false)} className="p-1 hover:bg-muted rounded-lg text-muted-foreground">
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => {
+                        setFilterStatus(e.target.value);
+                        setShowFilters(false);
+                      }}
+                      className="w-full px-4 py-3 bg-muted rounded-xl text-xs outline-none focus:ring-4 focus:ring-primary/10 text-foreground"
+                    >
+                      {statusOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-          <button className="p-3 text-muted-foreground hover:text-primary transition-colors"><Filter size={18} /></button>
         </div>
         
         <div className="overflow-x-auto">
@@ -167,7 +215,7 @@ const ChamamentoModule: React.FC = () => {
               {filteredCalls.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-8 py-16 text-center text-muted-foreground">
-                    {search ? 'Nenhum edital encontrado.' : 'Nenhum chamamento cadastrado ainda.'}
+                    {search || filterStatus ? 'Nenhum edital encontrado.' : 'Nenhum chamamento cadastrado ainda.'}
                   </td>
                 </tr>
               )}
@@ -176,13 +224,12 @@ const ChamamentoModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-card rounded-[2rem] p-6 md:p-8 w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-black text-foreground">Novo Chamamento</h3>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-muted rounded-xl transition-colors">
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-muted rounded-xl transition-colors text-muted-foreground">
                 <X size={20} />
               </button>
             </div>
@@ -198,7 +245,7 @@ const ChamamentoModule: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, numero_edital: e.target.value })}
                   placeholder="Ex: 001/2024"
                   required
-                  className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20"
+                  className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
 
@@ -212,7 +259,7 @@ const ChamamentoModule: React.FC = () => {
                   placeholder="Descrição do objeto do chamamento..."
                   required
                   rows={3}
-                  className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20 resize-none"
+                  className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20 resize-none text-foreground placeholder:text-muted-foreground"
                 />
               </div>
 
@@ -225,7 +272,7 @@ const ChamamentoModule: React.FC = () => {
                     type="date"
                     value={formData.data_inicio}
                     onChange={(e) => setFormData({ ...formData, data_inicio: e.target.value })}
-                    className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20"
+                    className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20 text-foreground"
                   />
                 </div>
                 <div>
@@ -236,7 +283,7 @@ const ChamamentoModule: React.FC = () => {
                     type="date"
                     value={formData.data_fim}
                     onChange={(e) => setFormData({ ...formData, data_fim: e.target.value })}
-                    className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20"
+                    className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20 text-foreground"
                   />
                 </div>
               </div>
@@ -251,7 +298,7 @@ const ChamamentoModule: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, valor_total: e.target.value })}
                   placeholder="R$ 0,00"
                   step="0.01"
-                  className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20"
+                  className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
 
