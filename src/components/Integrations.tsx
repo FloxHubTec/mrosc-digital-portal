@@ -1,11 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { 
   Link2, Lock, FileCheck, Building2, FileSignature, Newspaper,
-  ExternalLink, AlertTriangle, CheckCircle, Settings
+  ExternalLink, AlertTriangle, CheckCircle, Settings, Send
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { UserRole } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface Integration {
   id: string;
@@ -15,6 +22,7 @@ interface Integration {
   icon: React.ReactNode;
   features: string[];
   provider?: string;
+  requirements?: string[];
 }
 
 const integrations: Integration[] = [
@@ -31,6 +39,11 @@ const integrations: Integration[] = [
       'Alertas de vencimento',
     ],
     provider: 'ReceitaWS',
+    requirements: [
+      'Contrato com ReceitaWS',
+      'Token de acesso API',
+      'Certificado Digital A1',
+    ],
   },
   {
     id: 'banking',
@@ -45,6 +58,11 @@ const integrations: Integration[] = [
       'Relatórios financeiros',
     ],
     provider: 'Open Banking / Banco do Brasil',
+    requirements: [
+      'Convênio com instituição bancária',
+      'Autorização de acesso à conta',
+      'Certificado de segurança',
+    ],
   },
   {
     id: 'diario_oficial',
@@ -59,6 +77,11 @@ const integrations: Integration[] = [
       'Histórico de publicações',
     ],
     provider: 'Imprensa Oficial / DOM',
+    requirements: [
+      'Contrato com Imprensa Oficial',
+      'Credenciais de acesso ao sistema',
+      'Assinatura digital autorizada',
+    ],
   },
   {
     id: 'assinatura_digital',
@@ -73,6 +96,11 @@ const integrations: Integration[] = [
       'Validação automática',
     ],
     provider: 'Certisign / DocuSign',
+    requirements: [
+      'Licença do serviço de assinatura',
+      'Certificado Digital ICP-Brasil',
+      'Configuração de fluxo de aprovação',
+    ],
   },
 ];
 
@@ -91,6 +119,63 @@ const StatusBadge = ({ status }: { status: Integration['status'] }) => {
 };
 
 const IntegrationsModule: React.FC = () => {
+  const { user, profile } = useAuth();
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
+  const [showRequirementsModal, setShowRequirementsModal] = useState(false);
+  const [requestForm, setRequestForm] = useState({
+    integrationName: '',
+    description: '',
+  });
+  const [sending, setSending] = useState(false);
+
+  // Check if user is master (admin)
+  const isMaster = profile?.role === UserRole.MASTER || profile?.role === UserRole.ADMIN;
+
+  const handleOpenRequirements = (integration: Integration) => {
+    setSelectedIntegration(integration);
+    setShowRequirementsModal(true);
+  };
+
+  const handleOpenRequestModal = () => {
+    setRequestForm({ integrationName: '', description: '' });
+    setShowRequestModal(true);
+  };
+
+  const handleSendRequest = async () => {
+    if (!requestForm.integrationName || !requestForm.description) {
+      toast.error('Preencha todos os campos');
+      return;
+    }
+
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-integration-request', {
+        body: {
+          integrationName: requestForm.integrationName,
+          description: requestForm.description,
+          userName: profile?.full_name || user?.email,
+          userEmail: user?.email,
+        },
+      });
+
+      if (error) throw error;
+
+      // Open WhatsApp as fallback
+      if (data?.whatsappLink) {
+        window.open(data.whatsappLink, '_blank');
+      }
+
+      toast.success('Solicitação de integração enviada!');
+      setShowRequestModal(false);
+    } catch (err) {
+      console.error('Error sending request:', err);
+      toast.error('Erro ao enviar solicitação');
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -107,7 +192,7 @@ const IntegrationsModule: React.FC = () => {
             <p className="font-semibold text-yellow-800">Integrações requerem contratos externos</p>
             <p className="text-sm text-yellow-700">
               As integrações listadas abaixo dependem de contratos ou convênios com os provedores de serviço. 
-              Entre em contato com a equipe de TI para solicitar a ativação.
+              {isMaster ? ' Clique em "Ver Requisitos" para mais detalhes.' : ' Entre em contato com o administrador do sistema.'}
             </p>
           </div>
         </CardContent>
@@ -153,10 +238,10 @@ const IntegrationsModule: React.FC = () => {
                   <Button 
                     variant="outline" 
                     className="flex-1"
-                    disabled={integration.status === 'requires_contract'}
+                    onClick={() => handleOpenRequirements(integration)}
                   >
                     <Settings size={16} className="mr-2" />
-                    Configurar
+                    Ver Requisitos
                   </Button>
                   <Button 
                     variant="ghost"
@@ -172,26 +257,114 @@ const IntegrationsModule: React.FC = () => {
         ))}
       </div>
 
-      {/* Info Card */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-4 rounded-full bg-primary/10">
-              <Link2 className="w-8 h-8 text-primary" />
+      {/* Request Integration Card - Only for Master */}
+      {isMaster && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-4 rounded-full bg-primary/10">
+                <Link2 className="w-8 h-8 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-lg">Precisa de uma integração específica?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Solicite novas integrações ou personalizações para sua necessidade.
+                  A equipe de desenvolvimento entrará em contato.
+                </p>
+              </div>
+              <Button onClick={handleOpenRequestModal}>
+                Solicitar Integração
+              </Button>
             </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-lg">Precisa de uma integração específica?</h3>
-              <p className="text-sm text-muted-foreground">
-                Entre em contato com a equipe de desenvolvimento para solicitar novas integrações 
-                ou personalizar as existentes para sua necessidade.
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Requirements Modal */}
+      <Dialog open={showRequirementsModal} onOpenChange={setShowRequirementsModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings size={18} /> Requisitos para Integração
+            </DialogTitle>
+          </DialogHeader>
+          {selectedIntegration && (
+            <div className="space-y-4 mt-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-xl bg-primary/10 text-primary">
+                  {selectedIntegration.icon}
+                </div>
+                <div>
+                  <h3 className="font-bold">{selectedIntegration.name}</h3>
+                  <p className="text-sm text-muted-foreground">{selectedIntegration.provider}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-muted-foreground uppercase mb-3">Requisitos necessários:</p>
+                <ul className="space-y-2">
+                  {selectedIntegration.requirements?.map((req, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm p-3 bg-muted rounded-lg">
+                      <CheckCircle size={16} className="text-primary mt-0.5 shrink-0" />
+                      {req}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="p-4 bg-info/10 border border-info/20 rounded-lg">
+                <p className="text-sm text-info">
+                  <strong>Como proceder:</strong> Entre em contato com o provedor do serviço para obter os requisitos 
+                  necessários. Após obtê-los, envie para suporte@floxhub.com.br que a equipe técnica fará a configuração.
+                </p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Request Integration Modal - Only for Master */}
+      {isMaster && (
+        <Dialog open={showRequestModal} onOpenChange={setShowRequestModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Link2 size={18} /> Solicitar Nova Integração
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block">
+                  Nome da Integração *
+                </label>
+                <Input
+                  value={requestForm.integrationName}
+                  onChange={e => setRequestForm({ ...requestForm, integrationName: e.target.value })}
+                  placeholder="Ex: API de Geolocalização, Sistema de Backup..."
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase mb-1 block">
+                  Descrição da Necessidade *
+                </label>
+                <Textarea
+                  value={requestForm.description}
+                  onChange={e => setRequestForm({ ...requestForm, description: e.target.value })}
+                  placeholder="Descreva o que você precisa integrar e qual o objetivo..."
+                  rows={4}
+                />
+              </div>
+              <Button onClick={handleSendRequest} disabled={sending} className="w-full gap-2">
+                <Send size={16} />
+                {sending ? 'Enviando...' : 'Enviar Solicitação'}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                A solicitação será enviada para suporte@floxhub.com.br e WhatsApp (81) 98259-6969
               </p>
             </div>
-            <Button>
-              Solicitar Integração
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
