@@ -13,12 +13,12 @@ import { UserRole } from '@/types';
 import { 
   HelpCircle, BookOpen, Calendar, Search, Plus, MessageCircle, 
   CheckCircle, Clock, XCircle, Eye, Send, Video, FileText,
-  Users, Award, Sparkles, Phone
+  Users, Phone
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { mockKnowledgeBase, mockTrainingEvents, mockTickets, openWhatsApp, WHATSAPP_CENTRAL } from '@/data/mockData';
+import { mockKnowledgeBase, mockTrainingEvents, mockTickets, openWhatsApp } from '@/data/mockData';
 
 const TicketStatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
@@ -178,7 +178,7 @@ const SupportModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Quick Stats - Hidden some for OSC */}
+      {/* Quick Stats - Hidden for OSC */}
       {!isOSC && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="bg-blue-50 border-blue-200">
@@ -379,122 +379,6 @@ const SupportModule: React.FC = () => {
             </Dialog>
           </TabsContent>
         )}
-                <DialogHeader><DialogTitle>Abrir Ticket de Suporte</DialogTitle></DialogHeader>
-                <div className="space-y-4 mt-4">
-                  <Input 
-                    placeholder="Título do problema *" 
-                    value={ticketForm.titulo}
-                    onChange={e => setTicketForm({ ...ticketForm, titulo: e.target.value })}
-                  />
-                  <Textarea 
-                    placeholder="Descreva seu problema detalhadamente *" 
-                    value={ticketForm.descricao}
-                    onChange={e => setTicketForm({ ...ticketForm, descricao: e.target.value })}
-                    rows={4}
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <Select value={ticketForm.categoria} onValueChange={v => setTicketForm({ ...ticketForm, categoria: v })}>
-                      <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="geral">Geral</SelectItem>
-                        <SelectItem value="tecnico">Técnico</SelectItem>
-                        <SelectItem value="financeiro">Financeiro</SelectItem>
-                        <SelectItem value="acesso">Acesso</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={ticketForm.prioridade} onValueChange={v => setTicketForm({ ...ticketForm, prioridade: v })}>
-                      <SelectTrigger><SelectValue placeholder="Prioridade" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="baixa">Baixa</SelectItem>
-                        <SelectItem value="media">Média</SelectItem>
-                        <SelectItem value="alta">Alta</SelectItem>
-                        <SelectItem value="urgente">Urgente</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button onClick={handleCreateTicket} className="w-full">Enviar Ticket</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          <div className="space-y-3">
-            {tickets.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center text-muted-foreground">
-                  <HelpCircle size={48} className="mx-auto mb-4 opacity-50" />
-                  <p>Você não tem tickets de suporte</p>
-                </CardContent>
-              </Card>
-            ) : (
-              tickets.map(ticket => (
-                <Card key={ticket.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold">{ticket.titulo}</h3>
-                          <TicketStatusBadge status={ticket.status} />
-                          <PriorityBadge priority={ticket.prioridade} />
-                        </div>
-                        <p className="text-sm text-muted-foreground line-clamp-2">{ticket.descricao}</p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Aberto em {format(new Date(ticket.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                        </p>
-                        {ticket.resposta && (
-                          <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                            <p className="text-xs font-bold text-green-700 mb-1">Resposta:</p>
-                            <p className="text-sm text-green-800">{ticket.resposta}</p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        {ticket.status === 'aberto' && (
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => setSelectedTicket(ticket)}
-                          >
-                            <Send size={14} />
-                          </Button>
-                        )}
-                        {ticket.status === 'respondido' && (
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => closeTicket(ticket.id)}
-                          >
-                            Fechar
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-
-          {/* Response Modal */}
-          <Dialog open={!!selectedTicket} onOpenChange={() => setSelectedTicket(null)}>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Responder Ticket</DialogTitle></DialogHeader>
-              <div className="space-y-4 mt-4">
-                <div className="bg-muted p-3 rounded">
-                  <p className="font-semibold">{selectedTicket?.titulo}</p>
-                  <p className="text-sm text-muted-foreground">{selectedTicket?.descricao}</p>
-                </div>
-                <Textarea 
-                  placeholder="Digite sua resposta..." 
-                  value={responseText}
-                  onChange={e => setResponseText(e.target.value)}
-                  rows={4}
-                />
-                <Button onClick={handleRespondTicket} className="w-full">Enviar Resposta</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </TabsContent>
 
         {/* KNOWLEDGE BASE TAB */}
         <TabsContent value="knowledge" className="space-y-4">
@@ -550,7 +434,7 @@ const SupportModule: React.FC = () => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredArticles.length === 0 ? (
+            {displayArticles.length === 0 ? (
               <Card className="col-span-full">
                 <CardContent className="p-8 text-center text-muted-foreground">
                   <BookOpen size={48} className="mx-auto mb-4 opacity-50" />
@@ -558,7 +442,7 @@ const SupportModule: React.FC = () => {
                 </CardContent>
               </Card>
             ) : (
-              filteredArticles.map(article => (
+              displayArticles.map((article: any) => (
                 <Card 
                   key={article.id} 
                   className="hover:shadow-md transition-shadow cursor-pointer"
@@ -572,7 +456,7 @@ const SupportModule: React.FC = () => {
                       <span className="flex items-center gap-1">
                         <Eye size={12} /> {article.visualizacoes}
                       </span>
-                      {article.tags?.slice(0, 2).map(tag => (
+                      {article.tags?.slice(0, 2).map((tag: string) => (
                         <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
                       ))}
                     </div>
@@ -594,7 +478,7 @@ const SupportModule: React.FC = () => {
               </div>
               {selectedArticle?.tags && selectedArticle.tags.length > 0 && (
                 <div className="flex gap-2 mt-4">
-                  {selectedArticle.tags.map(tag => (
+                  {selectedArticle.tags.map((tag: string) => (
                     <Badge key={tag} variant="outline">{tag}</Badge>
                   ))}
                 </div>
@@ -671,7 +555,7 @@ const SupportModule: React.FC = () => {
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
-            {events.length === 0 ? (
+            {displayEvents.length === 0 ? (
               <Card className="col-span-full">
                 <CardContent className="p-8 text-center text-muted-foreground">
                   <Calendar size={48} className="mx-auto mb-4 opacity-50" />
@@ -679,7 +563,7 @@ const SupportModule: React.FC = () => {
                 </CardContent>
               </Card>
             ) : (
-              events.map(event => (
+              displayEvents.map((event: any) => (
                 <Card key={event.id} className="overflow-hidden">
                   <div className={`h-2 ${
                     event.tipo === 'webinar' ? 'bg-blue-500' : 
