@@ -18,6 +18,7 @@ import {
   MessageSquareWarning,
   Send,
   Paperclip,
+  ShieldCheck,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import jsPDF from "jspdf";
@@ -27,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
+import { useTheme } from "@/contexts/ThemeContext";
 
 // Interface para as fotos
 interface FotoEvidencia {
@@ -278,6 +280,7 @@ const mockLegislacao = [
 ];
 
 const TransparencyPortal: React.FC = () => {
+  const { theme } = useTheme();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPartnership, setSelectedPartnership] = useState<Partnership | null>(null);
   const [selectedEdital, setSelectedEdital] = useState<Chamamento | null>(null);
@@ -475,13 +478,22 @@ const TransparencyPortal: React.FC = () => {
     <div className="min-h-screen bg-background">
       <header className="bg-primary text-primary-foreground pt-12 pb-32 px-6">
         <div className="max-w-7xl mx-auto flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-black tracking-tighter">
-              PORTAL<span className="text-primary-foreground/80">MROSC</span>
-            </h1>
-            <p className="text-[10px] font-bold text-primary-foreground/70 uppercase tracking-widest">
-              Prefeitura Municipal de Unaí/MG
-            </p>
+          <div className="flex items-center gap-4">
+            {theme.logoUrl ? (
+              <img src={theme.logoUrl} alt={theme.organizationName} className="w-12 h-12 object-contain rounded-lg bg-primary-foreground/10 p-1" />
+            ) : (
+              <div className="w-12 h-12 bg-primary-foreground/10 rounded-lg flex items-center justify-center">
+                <ShieldCheck size={28} className="text-primary-foreground" />
+              </div>
+            )}
+            <div>
+              <h1 className="text-3xl font-black tracking-tighter">
+                PORTAL<span className="text-primary-foreground/80">MROSC</span>
+              </h1>
+              <p className="text-[10px] font-bold text-primary-foreground/70 uppercase tracking-widest">
+                {theme.organizationName}
+              </p>
+            </div>
           </div>
           <Link
             to="/"

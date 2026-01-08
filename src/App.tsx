@@ -2,7 +2,9 @@ import React from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FileText, Users, FileSignature, ShieldCheck, Eye, Search, Menu, X, ClipboardList, Megaphone, Briefcase, History, Lock, BookOpen, MessageSquare, Scale, BarChartHorizontal, LogOut, Trophy, FilePlus2, HelpCircle, Link2, FolderOpen, Settings } from 'lucide-react';
 import { LabelProvider } from './contexts/LabelContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import CurrentDateTime from './components/CurrentDateTime';
+import DynamicLogo from './components/DynamicLogo';
 import Dashboard from './components/Dashboard';
 import PartnershipsModule from './components/Partnerships';
 import AmendmentsModule from './components/Amendments';
@@ -118,12 +120,14 @@ const MainApp: React.FC = () => {
   // Check if current user is master or superadmin for profile settings
   const isMasterUser = currentRole === UserRole.MASTER || isDevSuperAdmin;
 
+  const { theme } = useTheme();
+
   return (
     <div className="flex h-screen bg-background overflow-hidden font-sans">
       <aside className={`bg-sidebar text-sidebar-foreground w-72 transition-all duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed md:relative z-50 h-full border-r border-sidebar-border overflow-y-auto scrollbar-hide`}>
         <div className="p-6 flex items-center justify-between border-b border-sidebar-border">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-sidebar-primary rounded-xl flex items-center justify-center shadow-lg"><ShieldCheck size={22} className="text-sidebar-primary-foreground" /></div>
+            <DynamicLogo size="sm" variant="sidebar" />
             <div>
               <h1 className="text-base font-black tracking-tight leading-none text-sidebar-foreground">MROSC<span className="text-sidebar-primary">Digital</span></h1>
               <p className="text-[9px] font-bold text-sidebar-foreground/50 uppercase tracking-widest mt-1">Sistema de Parcerias</p>
@@ -216,7 +220,7 @@ const MainApp: React.FC = () => {
             
             <div className="hidden md:flex flex-col items-end mr-4">
               <span className="text-[10px] font-black text-primary uppercase">Ambiente Seguro</span>
-              <span className="text-[9px] text-muted-foreground font-bold">{currentUser.department || 'Prefeitura de Unaí'}</span>
+              <span className="text-[9px] text-muted-foreground font-bold">{currentUser.department || theme.organizationName.split(' ').slice(-1)[0]}</span>
             </div>
             
             {/* Notification Dropdown */}
@@ -275,9 +279,11 @@ const AppRoutes: React.FC = () => {
 const AppWrapper = () => (
   <HashRouter>
     <AuthProvider>
-      <LabelProvider>
-        <AppRoutes />
-      </LabelProvider>
+      <ThemeProvider>
+        <LabelProvider>
+          <AppRoutes />
+        </LabelProvider>
+      </ThemeProvider>
     </AuthProvider>
   </HashRouter>
 );

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Mail, Lock, User, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/contexts/ThemeContext';
 import { UserRole } from '@/types';
 
 const Auth: React.FC = () => {
@@ -15,6 +16,7 @@ const Auth: React.FC = () => {
   const [success, setSuccess] = useState('');
 
   const { user, signIn, signUp } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -78,13 +80,17 @@ const Auth: React.FC = () => {
         {/* Logo */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-3xl shadow-2xl mb-6">
-            <ShieldCheck size={40} className="text-primary-foreground" />
+            {theme.logoUrl ? (
+              <img src={theme.logoUrl} alt={theme.organizationName} className="w-16 h-16 object-contain" />
+            ) : (
+              <ShieldCheck size={40} className="text-primary-foreground" />
+            )}
           </div>
           <h1 className="text-4xl font-black text-foreground tracking-tighter">
             MROSC<span className="text-primary">Digital</span>
           </h1>
           <p className="text-muted-foreground text-sm font-medium mt-2">
-            Sistema de Gestão de Parcerias • Unaí/MG
+            Sistema de Gestão de Parcerias • {theme.organizationName.split(' ').slice(-1)[0]}
           </p>
         </div>
 
