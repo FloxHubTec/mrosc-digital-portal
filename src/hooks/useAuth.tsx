@@ -158,6 +158,9 @@ export function getRoleEnum(roleString: string | null): UserRole {
   if (!roleString) return UserRole.OSC_USER;
   
   const roleMap: Record<string, UserRole> = {
+    // Superadmin (devs - não aparece no sistema)
+    'superadmin': UserRole.SUPERADMIN,
+    'superadmin_dev': UserRole.SUPERADMIN,
     // Novos valores do banco de dados
     'admin_master': UserRole.MASTER,
     'gestor': UserRole.GESTOR,
@@ -175,7 +178,14 @@ export function getRoleEnum(roleString: string | null): UserRole {
     'Procuradoria Jurídica': UserRole.LEGAL,
     'Representante Legal OSC': UserRole.OSC_LEGAL,
     'Usuário OSC': UserRole.OSC_USER,
+    // Superadmin Dev role
+    'Superadmin Dev': UserRole.SUPERADMIN,
   };
   
   return roleMap[roleString] || UserRole.OSC_USER;
+}
+
+// Check if user is superadmin (hidden from system)
+export function isSuperAdmin(roleString: string | null): boolean {
+  return roleString === 'superadmin' || roleString === 'superadmin_dev' || roleString === 'Superadmin Dev';
 }

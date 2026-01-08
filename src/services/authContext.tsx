@@ -14,7 +14,7 @@ export const MOCK_USER: User = {
 };
 
 export const hasPermission = (user: User, action: string): boolean => {
-  if (user.role === UserRole.MASTER) return true;
+  if (user.role === UserRole.MASTER || user.role === UserRole.SUPERADMIN) return true;
 
   const permissions: Record<string, UserRole[]> = {
     'VIEW_AMENDMENTS': [UserRole.MASTER, UserRole.CONTROL, UserRole.GESTOR, UserRole.LEGAL],
@@ -33,9 +33,11 @@ export const hasPermission = (user: User, action: string): boolean => {
 };
 
 export const getAccessibleRoutes = (role: UserRole): string[] => {
-  if (role === UserRole.MASTER) return ['all'];
+  if (role === UserRole.MASTER || role === UserRole.SUPERADMIN) return ['all'];
 
   const mapping: Record<UserRole, string[]> = {
+    [UserRole.SUPERADMIN]: ['all'],
+    [UserRole.MASTER]: ['all'],
     [UserRole.CONTROL]: ['/', '/accountability', '/oscs', '/reports', '/legislation', '/logs', '/manual', '/communication'],
     [UserRole.GESTOR]: ['/', '/amendments', '/pmis', '/chamamento', '/partnerships', '/accountability', '/reports', '/manual', '/communication'],
     [UserRole.LEGAL]: ['/', '/partnerships', '/legislation', '/communication', '/manual'],
@@ -46,7 +48,6 @@ export const getAccessibleRoutes = (role: UserRole): string[] => {
     [UserRole.TECH_PHYSICAL]: ['/', '/partnerships', '/accountability'],
     [UserRole.TECH_FINANCIAL]: ['/', '/partnerships', '/accountability', '/reports'],
     [UserRole.COUNCILS]: ['/', '/partnerships', '/reports', '/transparency'],
-    [UserRole.MASTER]: ['all']
   };
 
   return mapping[role] || ['/'];

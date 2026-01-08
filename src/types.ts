@@ -11,6 +11,7 @@ export enum PartnershipStatus {
 }
 
 export enum UserRole {
+  SUPERADMIN = 'Superadmin Dev',
   MASTER = 'Administrador Master',
   CONTROL = 'Controle Interno',
   GESTOR = 'Gestor da Parceria',
