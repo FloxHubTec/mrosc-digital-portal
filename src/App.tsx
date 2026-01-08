@@ -138,7 +138,6 @@ const MainApp: React.FC = () => {
               <SidebarItem to="/my-documents" icon={FolderOpen} label="Minha Documentação" active={location.pathname === '/my-documents'} />
               <SidebarItem to="/partnerships" icon={FileSignature} label="Minhas Parcerias" active={location.pathname.startsWith('/partnerships')} />
               <SidebarItem to="/accountability" icon={ClipboardList} label="Prestação de Contas" active={location.pathname === '/accountability'} />
-              <SidebarItem to="/chamamento" icon={Megaphone} label="Chamamentos Abertos" active={location.pathname === '/chamamento'} />
               <SidebarItem to="/communication" icon={MessageSquare} label="Comunicações" active={location.pathname === '/communication'} />
             </nav>
           </>
