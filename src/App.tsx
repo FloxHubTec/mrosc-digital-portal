@@ -1,6 +1,6 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, Users, FileSignature, ShieldCheck, Eye, Bell, Search, Menu, X, ClipboardList, Megaphone, Briefcase, History, Lock, BookOpen, MessageSquare, Scale, BarChartHorizontal, UserCircle, LogOut, Trophy, FilePlus2, HelpCircle, Link2 } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, FileSignature, ShieldCheck, Eye, Search, Menu, X, ClipboardList, Megaphone, Briefcase, History, Lock, BookOpen, MessageSquare, Scale, BarChartHorizontal, LogOut, Trophy, FilePlus2, HelpCircle, Link2 } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import PartnershipsModule from './components/Partnerships';
 import AmendmentsModule from './components/Amendments';
@@ -18,9 +18,11 @@ import ProposalSelectionModule from './components/ProposalSelection';
 import AdditivesModule from './components/Additives';
 import SupportModule from './components/Support';
 import IntegrationsModule from './components/Integrations';
+import NotificationDropdown from './components/NotificationDropdown';
+import UserProfileSettings from './components/UserProfileSettings';
 import Auth from './pages/Auth';
 import { UserRole } from './types';
-import { AuthProvider, useAuth, getRoleEnum } from './hooks/useAuth';
+import { AuthProvider, useAuth, getRoleEnum, isSuperAdmin } from './hooks/useAuth';
 import { getAccessibleRoutes } from './services/authContext';
 
 const SidebarItem = ({ to, icon: Icon, label, active, hidden }: { to: string, icon: any, label: string, active: boolean, hidden?: boolean }) => {
@@ -71,6 +73,9 @@ const App: React.FC = () => {
   const routes = getAccessibleRoutes(currentRole);
   const canAccess = (path: string) => routes.includes('all') || routes.includes(path);
 
+  // Check if user is superadmin (hidden from system display)
+  const isDevSuperAdmin = isSuperAdmin(profile?.role || null);
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
@@ -89,11 +94,17 @@ const App: React.FC = () => {
     return null;
   }
 
+  // Display role for UI (hide superadmin dev role)
+  const displayRole = isDevSuperAdmin ? UserRole.MASTER : currentRole;
+
   const currentUser = {
     name: profile?.full_name || user.email?.split('@')[0] || 'Usuário',
-    role: currentRole,
+    role: displayRole,
     department: profile?.department || undefined,
   };
+
+  // Check if current user is master or superadmin for profile settings
+  const isMasterUser = currentRole === UserRole.MASTER || isDevSuperAdmin;
 
   return (
     <div className="flex h-screen bg-background overflow-hidden font-sans">
@@ -170,15 +181,14 @@ const App: React.FC = () => {
               <span className="text-[10px] font-black text-primary uppercase">Ambiente Seguro</span>
               <span className="text-[9px] text-muted-foreground font-bold">{currentUser.department || 'Prefeitura de Unaí'}</span>
             </div>
-            <div className="relative cursor-pointer group">
-              <Bell className="text-muted-foreground group-hover:text-primary transition-colors" size={20} />
-              <span className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full border-2 border-card">3</span>
-            </div>
+            
+            {/* Notification Dropdown */}
+            <NotificationDropdown />
+            
             <div className="h-10 w-px bg-border hidden md:block"></div>
-            <button className="flex items-center space-x-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest hover:text-primary transition-colors">
-              <UserCircle size={20} />
-              <span className="hidden md:inline">Meu Perfil</span>
-            </button>
+            
+            {/* User Profile Settings */}
+            <UserProfileSettings user={currentUser} isMaster={isMasterUser} />
           </div>
         </header>
 
