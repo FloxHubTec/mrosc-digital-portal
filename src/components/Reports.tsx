@@ -362,22 +362,29 @@ const ReportsModule: React.FC = () => {
             
             {showExportDropdown === 'sicom' && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowExportDropdown(null)} />
-                <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden min-w-[200px] animate-in fade-in slide-in-from-top-2 duration-200">
-                  {[
-                    { id: 'excel' as ExportFormat, label: 'Excel (.xlsx)', icon: FileSpreadsheet },
-                    { id: 'csv' as ExportFormat, label: 'CSV (.csv)', icon: FileText },
-                    { id: 'pdf' as ExportFormat, label: 'PDF (.pdf)', icon: FileText },
-                  ].map(format => (
-                    <button
-                      key={format.id}
-                      onClick={() => { handleGenerateSICOM(format.id); setShowExportDropdown(null); }}
-                      className="w-full px-4 py-3 text-left text-sm font-medium text-foreground hover:bg-muted flex items-center gap-3 transition-colors"
-                    >
-                      <format.icon size={16} className="text-muted-foreground" />
-                      {format.label}
-                    </button>
-                  ))}
+                <div className="fixed inset-0 z-30" onClick={() => setShowExportDropdown(null)} />
+                <div className="absolute left-0 bottom-full mb-2 bg-white dark:bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden min-w-[220px] animate-in fade-in slide-in-from-bottom-2 duration-200">
+                  <button
+                    onClick={() => { handleGenerateSICOM('excel'); setShowExportDropdown(null); }}
+                    className="w-full px-4 py-3 text-left text-sm font-medium text-gray-800 dark:text-foreground hover:bg-gray-100 dark:hover:bg-muted flex items-center gap-3 transition-colors"
+                  >
+                    <FileSpreadsheet size={16} className="text-green-600" />
+                    Excel (.xlsx)
+                  </button>
+                  <button
+                    onClick={() => { handleGenerateSICOM('csv'); setShowExportDropdown(null); }}
+                    className="w-full px-4 py-3 text-left text-sm font-medium text-gray-800 dark:text-foreground hover:bg-gray-100 dark:hover:bg-muted flex items-center gap-3 transition-colors"
+                  >
+                    <FileText size={16} className="text-blue-600" />
+                    CSV (.csv)
+                  </button>
+                  <button
+                    onClick={() => { handleGenerateSICOM('pdf'); setShowExportDropdown(null); }}
+                    className="w-full px-4 py-3 text-left text-sm font-medium text-gray-800 dark:text-foreground hover:bg-gray-100 dark:hover:bg-muted flex items-center gap-3 transition-colors"
+                  >
+                    <FileText size={16} className="text-red-600" />
+                    PDF (.pdf)
+                  </button>
                 </div>
               </>
             )}
