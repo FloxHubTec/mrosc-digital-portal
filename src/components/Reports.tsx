@@ -12,11 +12,13 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { usePartnerships } from '@/hooks/usePartnerships';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type ExportFormat = 'excel' | 'csv' | 'pdf' | 'doc';
 
 const ReportsModule: React.FC = () => {
   const { partnerships } = usePartnerships();
+  const { theme } = useTheme();
   const [showFilters, setShowFilters] = useState(false);
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState<string | null>(null);
@@ -50,9 +52,9 @@ const ReportsModule: React.FC = () => {
     // Header
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('PREFEITURA MUNICIPAL DE UNAÍ', doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+    doc.text(theme.organizationName.toUpperCase(), doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
     doc.setFontSize(10);
-    doc.text('Estado de Minas Gerais', doc.internal.pageSize.getWidth() / 2, 26, { align: 'center' });
+    doc.text(theme.organizationSubtitle, doc.internal.pageSize.getWidth() / 2, 26, { align: 'center' });
     
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
@@ -90,7 +92,7 @@ const ReportsModule: React.FC = () => {
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
-      doc.text(`Página ${i} de ${pageCount} • Sistema MROSC Unaí/MG`, doc.internal.pageSize.getWidth() / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+      doc.text(`Página ${i} de ${pageCount} • Sistema MROSC ${theme.organizationName.split(' ').slice(-1)[0]}`, doc.internal.pageSize.getWidth() / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
     }
     
     doc.save(`REO_${selectedPartnership?.numero_termo || 'parceria'}_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -106,9 +108,9 @@ const ReportsModule: React.FC = () => {
     // Header
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('PREFEITURA MUNICIPAL DE UNAÍ', doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+    doc.text(theme.organizationName.toUpperCase(), doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
     doc.setFontSize(10);
-    doc.text('Estado de Minas Gerais', doc.internal.pageSize.getWidth() / 2, 26, { align: 'center' });
+    doc.text(theme.organizationSubtitle, doc.internal.pageSize.getWidth() / 2, 26, { align: 'center' });
     
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');

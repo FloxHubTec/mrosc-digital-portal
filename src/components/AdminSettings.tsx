@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
-import { Settings, Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, X, Users, BookOpen, Lock, KeyRound, Plus, Search, Edit, Server, Shield, Clock, Database, RefreshCw, Phone } from 'lucide-react';
+import { Settings, Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, X, Users, BookOpen, Lock, KeyRound, Plus, Search, Edit, Server, Shield, Clock, Database, RefreshCw, Phone, Palette, Image, RotateCcw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useLabels } from '@/contexts/LabelContext';
+import { useTheme, defaultTheme } from '@/contexts/ThemeContext';
 import { Textarea } from '@/components/ui/textarea';
 
-type TabType = 'migration' | 'users' | 'dictionary' | 'infrastructure';
+type TabType = 'migration' | 'users' | 'dictionary' | 'infrastructure' | 'branding';
 
 interface MockUser {
   id: string;
@@ -40,8 +41,17 @@ const AdminSettings: React.FC = () => {
     perfil: 'Técnico' as MockUser['perfil'],
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const { labels, updateLabel } = useLabels();
+  const { theme, updateTheme, resetTheme } = useTheme();
   const [editingLabels, setEditingLabels] = useState<Record<string, string>>(labels);
+  const [brandingForm, setBrandingForm] = useState({
+    primaryColor: theme.primaryColor,
+    secondaryColor: theme.secondaryColor,
+    organizationName: theme.organizationName,
+    organizationSubtitle: theme.organizationSubtitle,
+    logoUrl: theme.logoUrl,
+  });
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -136,6 +146,44 @@ const AdminSettings: React.FC = () => {
     toast({ title: "Dicionário salvo!", description: "Os termos foram atualizados com sucesso." });
   };
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast({ title: "Arquivo muito grande", description: "A imagem deve ter no máximo 2MB.", variant: "destructive" });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBrandingForm(prev => ({ ...prev, logoUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveBranding = () => {
+    updateTheme({
+      primaryColor: brandingForm.primaryColor,
+      secondaryColor: brandingForm.secondaryColor,
+      organizationName: brandingForm.organizationName,
+      organizationSubtitle: brandingForm.organizationSubtitle,
+      logoUrl: brandingForm.logoUrl,
+    });
+    toast({ title: "Identidade Visual salva!", description: "As configurações de tema foram aplicadas com sucesso." });
+  };
+
+  const handleResetBranding = () => {
+    resetTheme();
+    setBrandingForm({
+      primaryColor: defaultTheme.primaryColor,
+      secondaryColor: defaultTheme.secondaryColor,
+      organizationName: defaultTheme.organizationName,
+      organizationSubtitle: defaultTheme.organizationSubtitle,
+      logoUrl: defaultTheme.logoUrl,
+    });
+    toast({ title: "Tema restaurado!", description: "As configurações padrão foram restauradas." });
+  };
+
   const filteredUsers = users.filter(u => 
     u.nome.toLowerCase().includes(userSearch.toLowerCase()) ||
     u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
@@ -158,6 +206,7 @@ const AdminSettings: React.FC = () => {
   };
 
   const tabs = [
+    { id: 'branding' as TabType, label: 'Identidade Visual', icon: Palette },
     { id: 'migration' as TabType, label: 'Migração de Dados', icon: Upload },
     { id: 'users' as TabType, label: 'Gestão de Usuários', icon: Users },
     { id: 'dictionary' as TabType, label: 'Dicionário', icon: BookOpen },
@@ -192,6 +241,203 @@ const AdminSettings: React.FC = () => {
           </button>
         ))}
       </div>
+
+      {/* Branding Tab */}
+      {activeTab === 'branding' && (
+        <div className="bg-card rounded-[2rem] md:rounded-[2.5rem] border border-border p-6 md:p-12 shadow-sm">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+            <div>
+              <h3 className="text-xl md:text-2xl font-black text-foreground mb-2">Identidade Visual (White Label)</h3>
+              <p className="text-muted-foreground">
+                Personalize as cores, logomarca e nome da organização exibidos no sistema.
+              </p>
+            </div>
+            <Button variant="outline" onClick={handleResetBranding} className="gap-2 text-muted-foreground">
+              <RotateCcw size={16} />
+              Restaurar Padrão
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Color Settings */}
+            <div className="space-y-6">
+              <h4 className="font-black text-foreground text-lg flex items-center gap-2">
+                <Palette size={18} className="text-primary" />
+                Cores do Sistema
+              </h4>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
+                    Cor Principal (Primária)
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="color"
+                      value={brandingForm.primaryColor}
+                      onChange={(e) => setBrandingForm(prev => ({ ...prev, primaryColor: e.target.value }))}
+                      className="w-16 h-12 rounded-xl cursor-pointer border border-border"
+                    />
+                    <input
+                      type="text"
+                      value={brandingForm.primaryColor}
+                      onChange={(e) => setBrandingForm(prev => ({ ...prev, primaryColor: e.target.value }))}
+                      className="flex-1 px-4 py-3 bg-muted rounded-xl text-sm outline-none focus:ring-4 focus:ring-primary/20 text-foreground font-mono"
+                      placeholder="#0f766e"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Usada em botões, sidebar e destaques.</p>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
+                    Cor Secundária (Acentos)
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="color"
+                      value={brandingForm.secondaryColor}
+                      onChange={(e) => setBrandingForm(prev => ({ ...prev, secondaryColor: e.target.value }))}
+                      className="w-16 h-12 rounded-xl cursor-pointer border border-border"
+                    />
+                    <input
+                      type="text"
+                      value={brandingForm.secondaryColor}
+                      onChange={(e) => setBrandingForm(prev => ({ ...prev, secondaryColor: e.target.value }))}
+                      className="flex-1 px-4 py-3 bg-muted rounded-xl text-sm outline-none focus:ring-4 focus:ring-primary/20 text-foreground font-mono"
+                      placeholder="#0d9488"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Usada em links e elementos secundários.</p>
+                </div>
+              </div>
+
+              {/* Preview */}
+              <div className="mt-6 p-6 bg-muted rounded-2xl">
+                <p className="text-xs font-bold text-muted-foreground uppercase mb-4">Prévia das Cores</p>
+                <div className="flex gap-4">
+                  <div 
+                    className="w-20 h-20 rounded-xl shadow-lg flex items-center justify-center text-white text-xs font-bold"
+                    style={{ backgroundColor: brandingForm.primaryColor }}
+                  >
+                    Primária
+                  </div>
+                  <div 
+                    className="w-20 h-20 rounded-xl shadow-lg flex items-center justify-center text-white text-xs font-bold"
+                    style={{ backgroundColor: brandingForm.secondaryColor }}
+                  >
+                    Secundária
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Organization Settings */}
+            <div className="space-y-6">
+              <h4 className="font-black text-foreground text-lg flex items-center gap-2">
+                <Image size={18} className="text-primary" />
+                Dados da Organização
+              </h4>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
+                    Nome da Organização
+                  </label>
+                  <input
+                    type="text"
+                    value={brandingForm.organizationName}
+                    onChange={(e) => setBrandingForm(prev => ({ ...prev, organizationName: e.target.value }))}
+                    className="w-full px-4 py-3 bg-muted rounded-xl text-sm outline-none focus:ring-4 focus:ring-primary/20 text-foreground"
+                    placeholder="Prefeitura Municipal de..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
+                    Subtítulo / Estado
+                  </label>
+                  <input
+                    type="text"
+                    value={brandingForm.organizationSubtitle}
+                    onChange={(e) => setBrandingForm(prev => ({ ...prev, organizationSubtitle: e.target.value }))}
+                    className="w-full px-4 py-3 bg-muted rounded-xl text-sm outline-none focus:ring-4 focus:ring-primary/20 text-foreground"
+                    placeholder="Estado de Minas Gerais"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
+                    Logomarca / Brasão
+                  </label>
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+                  
+                  <div 
+                    onClick={() => logoInputRef.current?.click()}
+                    className="border-2 border-dashed border-border rounded-2xl p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all"
+                  >
+                    {brandingForm.logoUrl ? (
+                      <div className="flex flex-col items-center gap-4">
+                        <img 
+                          src={brandingForm.logoUrl} 
+                          alt="Logo" 
+                          className="w-24 h-24 object-contain rounded-xl"
+                        />
+                        <p className="text-xs text-muted-foreground">Clique para alterar</p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="p-4 bg-muted rounded-xl">
+                          <Image size={32} className="text-muted-foreground" />
+                        </div>
+                        <p className="text-sm text-foreground font-medium">Clique para enviar</p>
+                        <p className="text-xs text-muted-foreground">PNG, JPG ou SVG (máx. 2MB)</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {brandingForm.logoUrl && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="mt-2 text-destructive hover:bg-destructive/10"
+                      onClick={() => setBrandingForm(prev => ({ ...prev, logoUrl: '' }))}
+                    >
+                      <X size={14} className="mr-1" />
+                      Remover Logo
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-10 flex justify-end">
+            <Button onClick={handleSaveBranding} className="gap-2 px-8">
+              <CheckCircle size={16} />
+              Salvar Identidade Visual
+            </Button>
+          </div>
+
+          <div className="mt-8 p-6 bg-muted rounded-2xl">
+            <h4 className="font-black text-foreground mb-3 flex items-center gap-2">
+              <AlertCircle size={16} className="text-info" />
+              Onde as configurações são aplicadas
+            </h4>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li>• <strong>Cores:</strong> Sidebar, botões, links e elementos de destaque</li>
+              <li>• <strong>Nome:</strong> Cabeçalho do sistema, Portal de Transparência e PDFs gerados</li>
+              <li>• <strong>Logo:</strong> Tela de Login, Sidebar e relatórios oficiais (REO/REFF)</li>
+            </ul>
+          </div>
+        </div>
+      )}
 
       {/* Migration Tab */}
       {activeTab === 'migration' && (
