@@ -130,7 +130,7 @@ const IntegrationsModule: React.FC = () => {
   const [sending, setSending] = useState(false);
 
   // Check if user is master (admin)
-  const isMaster = profile?.role === UserRole.MASTER || profile?.role === UserRole.ADMIN;
+  const isMaster = profile?.role === UserRole.MASTER;
 
   const handleOpenRequirements = (integration: Integration) => {
     setSelectedIntegration(integration);
