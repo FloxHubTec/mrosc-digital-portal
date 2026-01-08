@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Settings, Plus, Users, Mail, Shield, Edit, Save, X, Key, Building } from 'lucide-react';
+import { User, Settings, Plus, Users, Mail, Shield, Edit, Save, X, Key, Building, Bell, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +61,45 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
     { id: '3', name: 'Ana Costa', email: 'ana@osc.org.br', role: 'Representante Legal OSC', status: 'Ativo' },
     { id: '4', name: 'Carlos Oliveira', email: 'carlos@unai.mg.gov.br', role: 'Controle Interno', status: 'Ativo' },
   ]);
+
+  // Pending user approvals - only for Gestor and Técnico roles
+  const [pendingApprovals, setPendingApprovals] = useState<Array<{
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    department: string;
+    requestedAt: string;
+  }>>([
+    { id: 'p1', name: 'Fernando Mendes', email: 'fernando@unai.mg.gov.br', role: 'Gestor', department: 'Secretaria de Cultura', requestedAt: '2024-01-15' },
+    { id: 'p2', name: 'Camila Rodrigues', email: 'camila@unai.mg.gov.br', role: 'Técnico', department: 'Secretaria de Assistência Social', requestedAt: '2024-01-14' },
+    { id: 'p3', name: 'Roberto Lima', email: 'roberto@unai.mg.gov.br', role: 'Gestor', department: 'Secretaria de Educação', requestedAt: '2024-01-13' },
+  ]);
+
+  const handleApproveUser = (userId: string) => {
+    const user = pendingApprovals.find(u => u.id === userId);
+    if (user) {
+      // Add to active users
+      setCreatedUsers(prev => [...prev, {
+        id: userId,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: 'Ativo'
+      }]);
+      // Remove from pending
+      setPendingApprovals(prev => prev.filter(u => u.id !== userId));
+      toast.success(`Usuário ${user.name} aprovado com sucesso! Um e-mail de confirmação foi enviado.`);
+    }
+  };
+
+  const handleRejectUser = (userId: string) => {
+    const user = pendingApprovals.find(u => u.id === userId);
+    if (user) {
+      setPendingApprovals(prev => prev.filter(u => u.id !== userId));
+      toast.info(`Solicitação de ${user.name} foi rejeitada.`);
+    }
+  };
 
   const handleSaveProfile = () => {
     toast.success('Perfil atualizado com sucesso!');
@@ -263,6 +302,58 @@ const UserProfileSettings: React.FC<UserProfileSettingsProps> = ({
           {/* Users Tab (Master only) */}
           {isMaster && (
             <TabsContent value="users" className="space-y-4 mt-4">
+              {/* Pending Approvals Section */}
+              {pendingApprovals.length > 0 && (
+                <Card className="border-warning/50 bg-warning/5">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2 text-warning">
+                      <Bell size={18} className="animate-pulse" />
+                      Aprovação de Novos Usuários
+                      <Badge className="bg-warning text-warning-foreground ml-2">{pendingApprovals.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Os seguintes usuários solicitaram acesso como Gestor ou Técnico e aguardam sua aprovação:
+                    </p>
+                    {pendingApprovals.map(u => (
+                      <div key={u.id} className="p-4 bg-card rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-warning/20 flex items-center justify-center">
+                            <Clock size={18} className="text-warning" />
+                          </div>
+                          <div>
+                            <p className="font-semibold">{u.name}</p>
+                            <p className="text-xs text-muted-foreground">{u.email}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge className={getRoleColor(u.role)}>{u.role}</Badge>
+                              <span className="text-xs text-muted-foreground">• {u.department}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleApproveUser(u.id)}
+                            className="gap-1 bg-green-600 hover:bg-green-700 flex-1 sm:flex-none"
+                          >
+                            <CheckCircle size={14} /> Aprovar
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleRejectUser(u.id)}
+                            className="gap-1 text-destructive border-destructive hover:bg-destructive/10 flex-1 sm:flex-none"
+                          >
+                            <XCircle size={14} /> Rejeitar
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-bold">Gerenciar Usuários</h3>
                 <Button onClick={() => setShowCreateUser(true)} className="gap-2">
