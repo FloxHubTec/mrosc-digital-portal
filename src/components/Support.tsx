@@ -9,14 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSupport, SupportTicket, KnowledgeArticle, TrainingEvent } from '@/hooks/useSupport';
 import { useAuth } from '@/hooks/useAuth';
+import { UserRole } from '@/types';
 import { 
   HelpCircle, BookOpen, Calendar, Search, Plus, MessageCircle, 
   CheckCircle, Clock, XCircle, Eye, Send, Video, FileText,
-  Users, Award, Sparkles
+  Users, Award, Sparkles, Phone
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { mockKnowledgeBase, mockTrainingEvents, mockTickets, openWhatsApp, WHATSAPP_CENTRAL } from '@/data/mockData';
 
 const TicketStatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
@@ -45,7 +47,10 @@ const SupportModule: React.FC = () => {
     createArticle, incrementViews, createEvent, inscribeEvent,
     getTicketStats, searchArticles
   } = useSupport();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  
+  // Check if user is OSC
+  const isOSC = profile?.role === UserRole.OSC_LEGAL || profile?.role === UserRole.OSC_USER;
   
   const [searchTerm, setSearchTerm] = useState('');
   const [showTicketModal, setShowTicketModal] = useState(false);
@@ -81,6 +86,19 @@ const SupportModule: React.FC = () => {
 
   const ticketStats = getTicketStats();
   const filteredArticles = searchArticles(searchTerm);
+  
+  // Use mock data for knowledge base if empty
+  const displayArticles = filteredArticles.length > 0 ? filteredArticles : mockKnowledgeBase.filter(a => 
+    a.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    a.categoria.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    a.conteudo.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
+  // Use mock data for events if empty
+  const displayEvents = events.length > 0 ? events : mockTrainingEvents;
+  
+  // Use mock data for tickets if empty
+  const displayTickets = tickets.length > 0 ? tickets : mockTickets;
 
   const handleCreateTicket = async () => {
     if (!user || !ticketForm.titulo || !ticketForm.descricao) {
@@ -137,6 +155,11 @@ const SupportModule: React.FC = () => {
     }
   };
 
+  const handleWhatsAppSupport = () => {
+    openWhatsApp('Olá! Preciso de suporte no sistema MROSC Unaí.');
+    toast.success('Redirecionando para WhatsApp...');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -155,44 +178,72 @@ const SupportModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-4 text-center">
-            <MessageCircle className="w-6 h-6 text-blue-600 mx-auto mb-1" />
-            <p className="text-2xl font-black text-blue-800">{ticketStats.aberto}</p>
-            <p className="text-xs text-blue-600">Tickets Abertos</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-green-50 border-green-200">
-          <CardContent className="p-4 text-center">
-            <CheckCircle className="w-6 h-6 text-green-600 mx-auto mb-1" />
-            <p className="text-2xl font-black text-green-800">{ticketStats.respondido}</p>
-            <p className="text-xs text-green-600">Respondidos</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-purple-50 border-purple-200">
-          <CardContent className="p-4 text-center">
-            <BookOpen className="w-6 h-6 text-purple-600 mx-auto mb-1" />
-            <p className="text-2xl font-black text-purple-800">{articles.length}</p>
-            <p className="text-xs text-purple-600">Artigos</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-orange-50 border-orange-200">
-          <CardContent className="p-4 text-center">
-            <Calendar className="w-6 h-6 text-orange-600 mx-auto mb-1" />
-            <p className="text-2xl font-black text-orange-800">{events.length}</p>
-            <p className="text-xs text-orange-600">Eventos</p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Quick Stats - Hidden some for OSC */}
+      {!isOSC && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="p-4 text-center">
+              <MessageCircle className="w-6 h-6 text-blue-600 mx-auto mb-1" />
+              <p className="text-2xl font-black text-blue-800">{ticketStats.aberto}</p>
+              <p className="text-xs text-blue-600">Tickets Abertos</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-green-50 border-green-200">
+            <CardContent className="p-4 text-center">
+              <CheckCircle className="w-6 h-6 text-green-600 mx-auto mb-1" />
+              <p className="text-2xl font-black text-green-800">{ticketStats.respondido}</p>
+              <p className="text-xs text-green-600">Respondidos</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-purple-50 border-purple-200">
+            <CardContent className="p-4 text-center">
+              <BookOpen className="w-6 h-6 text-purple-600 mx-auto mb-1" />
+              <p className="text-2xl font-black text-purple-800">{displayArticles.length}</p>
+              <p className="text-xs text-purple-600">Artigos</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-orange-50 border-orange-200">
+            <CardContent className="p-4 text-center">
+              <Calendar className="w-6 h-6 text-orange-600 mx-auto mb-1" />
+              <p className="text-2xl font-black text-orange-800">{displayEvents.length}</p>
+              <p className="text-xs text-orange-600">Eventos</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-      {/* Tabs */}
-      <Tabs defaultValue="tickets" className="space-y-4">
-        <TabsList className="grid grid-cols-3 w-full max-w-md">
-          <TabsTrigger value="tickets" className="gap-2">
-            <HelpCircle size={16} /> Tickets
-          </TabsTrigger>
+      {/* OSC: WhatsApp Contact Button */}
+      {isOSC && (
+        <Card className="bg-green-50 border-green-200">
+          <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center">
+                <Phone className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h3 className="font-black text-green-800 text-lg">Precisa de Ajuda?</h3>
+                <p className="text-green-600 text-sm">Entre em contato com nossa central de suporte via WhatsApp</p>
+              </div>
+            </div>
+            <Button 
+              onClick={handleWhatsAppSupport}
+              className="bg-green-600 hover:bg-green-700 text-white gap-2 px-6 py-3"
+            >
+              <MessageCircle size={18} />
+              Enviar Mensagem
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tabs - OSC sees only Conhecimento and Eventos */}
+      <Tabs defaultValue={isOSC ? "knowledge" : "tickets"} className="space-y-4">
+        <TabsList className={`grid w-full max-w-md ${isOSC ? 'grid-cols-2' : 'grid-cols-3'}`}>
+          {!isOSC && (
+            <TabsTrigger value="tickets" className="gap-2">
+              <HelpCircle size={16} /> Tickets
+            </TabsTrigger>
+          )}
           <TabsTrigger value="knowledge" className="gap-2">
             <BookOpen size={16} /> Conhecimento
           </TabsTrigger>
@@ -201,15 +252,133 @@ const SupportModule: React.FC = () => {
           </TabsTrigger>
         </TabsList>
 
-        {/* TICKETS TAB */}
-        <TabsContent value="tickets" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-bold">Meus Tickets de Suporte</h2>
-            <Dialog open={showTicketModal} onOpenChange={setShowTicketModal}>
-              <DialogTrigger asChild>
-                <Button className="gap-2"><Plus size={16} /> Novo Ticket</Button>
-              </DialogTrigger>
+        {/* TICKETS TAB - Hidden for OSC */}
+        {!isOSC && (
+          <TabsContent value="tickets" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-bold">Meus Tickets de Suporte</h2>
+              <Dialog open={showTicketModal} onOpenChange={setShowTicketModal}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2"><Plus size={16} /> Novo Ticket</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Abrir Ticket de Suporte</DialogTitle></DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <Input 
+                      placeholder="Título do problema *" 
+                      value={ticketForm.titulo}
+                      onChange={e => setTicketForm({ ...ticketForm, titulo: e.target.value })}
+                    />
+                    <Textarea 
+                      placeholder="Descreva seu problema detalhadamente *" 
+                      value={ticketForm.descricao}
+                      onChange={e => setTicketForm({ ...ticketForm, descricao: e.target.value })}
+                      rows={4}
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <Select value={ticketForm.categoria} onValueChange={v => setTicketForm({ ...ticketForm, categoria: v })}>
+                        <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="geral">Geral</SelectItem>
+                          <SelectItem value="tecnico">Técnico</SelectItem>
+                          <SelectItem value="financeiro">Financeiro</SelectItem>
+                          <SelectItem value="acesso">Acesso</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={ticketForm.prioridade} onValueChange={v => setTicketForm({ ...ticketForm, prioridade: v })}>
+                        <SelectTrigger><SelectValue placeholder="Prioridade" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="baixa">Baixa</SelectItem>
+                          <SelectItem value="media">Média</SelectItem>
+                          <SelectItem value="alta">Alta</SelectItem>
+                          <SelectItem value="urgente">Urgente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button onClick={handleCreateTicket} className="w-full">Enviar Ticket</Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <div className="space-y-3">
+              {displayTickets.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center text-muted-foreground">
+                    <HelpCircle size={48} className="mx-auto mb-4 opacity-50" />
+                    <p>Você não tem tickets de suporte</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                displayTickets.map((ticket: any) => (
+                  <Card key={ticket.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold">{ticket.titulo}</h3>
+                            <TicketStatusBadge status={ticket.status} />
+                            <PriorityBadge priority={ticket.prioridade} />
+                          </div>
+                          <p className="text-sm text-muted-foreground line-clamp-2">{ticket.descricao}</p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Aberto em {format(new Date(ticket.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                          </p>
+                          {ticket.resposta && (
+                            <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                              <p className="text-xs font-bold text-green-700 mb-1">Resposta:</p>
+                              <p className="text-sm text-green-800">{ticket.resposta}</p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          {ticket.status === 'aberto' && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => setSelectedTicket(ticket)}
+                            >
+                              <Send size={14} />
+                            </Button>
+                          )}
+                          {ticket.status === 'respondido' && (
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => closeTicket(ticket.id)}
+                            >
+                              Fechar
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+
+            {/* Response Modal */}
+            <Dialog open={!!selectedTicket} onOpenChange={() => setSelectedTicket(null)}>
               <DialogContent>
+                <DialogHeader><DialogTitle>Responder Ticket</DialogTitle></DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div className="bg-muted p-3 rounded">
+                    <p className="font-semibold">{selectedTicket?.titulo}</p>
+                    <p className="text-sm text-muted-foreground">{selectedTicket?.descricao}</p>
+                  </div>
+                  <Textarea 
+                    placeholder="Digite sua resposta..." 
+                    value={responseText}
+                    onChange={e => setResponseText(e.target.value)}
+                    rows={4}
+                  />
+                  <Button onClick={handleRespondTicket} className="w-full">Enviar Resposta</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+        )}
                 <DialogHeader><DialogTitle>Abrir Ticket de Suporte</DialogTitle></DialogHeader>
                 <div className="space-y-4 mt-4">
                   <Input 
@@ -339,42 +508,45 @@ const SupportModule: React.FC = () => {
                 onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
-            <Dialog open={showArticleModal} onOpenChange={setShowArticleModal}>
-              <DialogTrigger asChild>
-                <Button className="gap-2"><Plus size={16} /> Novo Artigo</Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader><DialogTitle>Publicar Artigo</DialogTitle></DialogHeader>
-                <div className="space-y-4 mt-4">
-                  <Input 
-                    placeholder="Título do artigo *" 
-                    value={articleForm.titulo}
-                    onChange={e => setArticleForm({ ...articleForm, titulo: e.target.value })}
-                  />
-                  <Select value={articleForm.categoria} onValueChange={v => setArticleForm({ ...articleForm, categoria: v })}>
-                    <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="geral">Geral</SelectItem>
-                      <SelectItem value="mrosc">MROSC</SelectItem>
-                      <SelectItem value="prestacao">Prestação de Contas</SelectItem>
-                      <SelectItem value="sistema">Sistema</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Textarea 
-                    placeholder="Conteúdo do artigo *" 
-                    value={articleForm.conteudo}
-                    onChange={e => setArticleForm({ ...articleForm, conteudo: e.target.value })}
-                    rows={8}
-                  />
-                  <Input 
-                    placeholder="Tags (separadas por vírgula)" 
-                    value={articleForm.tags}
-                    onChange={e => setArticleForm({ ...articleForm, tags: e.target.value })}
-                  />
-                  <Button onClick={handleCreateArticle} className="w-full">Publicar</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            {/* Botão Novo Artigo - OCULTO para OSC */}
+            {!isOSC && (
+              <Dialog open={showArticleModal} onOpenChange={setShowArticleModal}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2"><Plus size={16} /> Novo Artigo</Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader><DialogTitle>Publicar Artigo</DialogTitle></DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <Input 
+                      placeholder="Título do artigo *" 
+                      value={articleForm.titulo}
+                      onChange={e => setArticleForm({ ...articleForm, titulo: e.target.value })}
+                    />
+                    <Select value={articleForm.categoria} onValueChange={v => setArticleForm({ ...articleForm, categoria: v })}>
+                      <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="geral">Geral</SelectItem>
+                        <SelectItem value="mrosc">MROSC</SelectItem>
+                        <SelectItem value="prestacao">Prestação de Contas</SelectItem>
+                        <SelectItem value="sistema">Sistema</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Textarea 
+                      placeholder="Conteúdo do artigo *" 
+                      value={articleForm.conteudo}
+                      onChange={e => setArticleForm({ ...articleForm, conteudo: e.target.value })}
+                      rows={8}
+                    />
+                    <Input 
+                      placeholder="Tags (separadas por vírgula)" 
+                      value={articleForm.tags}
+                      onChange={e => setArticleForm({ ...articleForm, tags: e.target.value })}
+                    />
+                    <Button onClick={handleCreateArticle} className="w-full">Publicar</Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -435,64 +607,67 @@ const SupportModule: React.FC = () => {
         <TabsContent value="events" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-bold">Eventos e Treinamentos</h2>
-            <Dialog open={showEventModal} onOpenChange={setShowEventModal}>
-              <DialogTrigger asChild>
-                <Button className="gap-2"><Plus size={16} /> Novo Evento</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Criar Evento</DialogTitle></DialogHeader>
-                <div className="space-y-4 mt-4">
-                  <Input 
-                    placeholder="Título do evento *" 
-                    value={eventForm.titulo}
-                    onChange={e => setEventForm({ ...eventForm, titulo: e.target.value })}
-                  />
-                  <Select value={eventForm.tipo} onValueChange={v => setEventForm({ ...eventForm, tipo: v })}>
-                    <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="webinar">Webinar</SelectItem>
-                      <SelectItem value="presencial">Presencial</SelectItem>
-                      <SelectItem value="curso_online">Curso Online</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Textarea 
-                    placeholder="Descrição do evento" 
-                    value={eventForm.descricao}
-                    onChange={e => setEventForm({ ...eventForm, descricao: e.target.value })}
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-bold text-muted-foreground">Data/Hora Início</label>
-                      <Input 
-                        type="datetime-local" 
-                        value={eventForm.data_inicio}
-                        onChange={e => setEventForm({ ...eventForm, data_inicio: e.target.value })}
-                      />
+            {/* Botão Novo Evento - OCULTO para OSC */}
+            {!isOSC && (
+              <Dialog open={showEventModal} onOpenChange={setShowEventModal}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2"><Plus size={16} /> Novo Evento</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Criar Evento</DialogTitle></DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <Input 
+                      placeholder="Título do evento *" 
+                      value={eventForm.titulo}
+                      onChange={e => setEventForm({ ...eventForm, titulo: e.target.value })}
+                    />
+                    <Select value={eventForm.tipo} onValueChange={v => setEventForm({ ...eventForm, tipo: v })}>
+                      <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="webinar">Webinar</SelectItem>
+                        <SelectItem value="presencial">Presencial</SelectItem>
+                        <SelectItem value="curso_online">Curso Online</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Textarea 
+                      placeholder="Descrição do evento" 
+                      value={eventForm.descricao}
+                      onChange={e => setEventForm({ ...eventForm, descricao: e.target.value })}
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-muted-foreground">Data/Hora Início</label>
+                        <Input 
+                          type="datetime-local" 
+                          value={eventForm.data_inicio}
+                          onChange={e => setEventForm({ ...eventForm, data_inicio: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-muted-foreground">Data/Hora Fim</label>
+                        <Input 
+                          type="datetime-local" 
+                          value={eventForm.data_fim}
+                          onChange={e => setEventForm({ ...eventForm, data_fim: e.target.value })}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-xs font-bold text-muted-foreground">Data/Hora Fim</label>
-                      <Input 
-                        type="datetime-local" 
-                        value={eventForm.data_fim}
-                        onChange={e => setEventForm({ ...eventForm, data_fim: e.target.value })}
-                      />
-                    </div>
+                    <Input 
+                      placeholder="Link de inscrição" 
+                      value={eventForm.link_inscricao}
+                      onChange={e => setEventForm({ ...eventForm, link_inscricao: e.target.value })}
+                    />
+                    <Input 
+                      type="number" 
+                      placeholder="Número de vagas" 
+                      value={eventForm.vagas}
+                      onChange={e => setEventForm({ ...eventForm, vagas: e.target.value })}
+                    />
+                    <Button onClick={handleCreateEvent} className="w-full">Criar Evento</Button>
                   </div>
-                  <Input 
-                    placeholder="Link de inscrição" 
-                    value={eventForm.link_inscricao}
-                    onChange={e => setEventForm({ ...eventForm, link_inscricao: e.target.value })}
-                  />
-                  <Input 
-                    type="number" 
-                    placeholder="Número de vagas" 
-                    value={eventForm.vagas}
-                    onChange={e => setEventForm({ ...eventForm, vagas: e.target.value })}
-                  />
-                  <Button onClick={handleCreateEvent} className="w-full">Criar Evento</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">

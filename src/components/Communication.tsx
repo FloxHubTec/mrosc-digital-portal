@@ -12,6 +12,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { UserRole } from '@/types';
+import { mockCommunications } from '@/data/mockData';
 
 interface Message {
   id: string;
@@ -29,9 +31,17 @@ interface Message {
 
 const CommunicationModule: React.FC = () => {
   const { user, profile } = useAuth();
+  
+  // Check if user is OSC
+  const isOSC = profile?.role === UserRole.OSC_LEGAL || profile?.role === UserRole.OSC_USER;
+  
   const [messages, setMessages] = useState<Message[]>([
+    ...mockCommunications.map(c => ({
+      ...c,
+      snippet: c.message.substring(0, 60) + '...',
+    })),
     { 
-      id: '1', 
+      id: '4', 
       sender: 'Controle Interno', 
       sender_id: '1',
       recipient: 'OSC Futuro Melhor',
@@ -47,7 +57,7 @@ const CommunicationModule: React.FC = () => {
       ]
     },
     { 
-      id: '2', 
+      id: '5', 
       sender: 'OSC Futuro Melhor', 
       sender_id: '2',
       recipient: 'Gestor da Parceria',
@@ -62,7 +72,7 @@ const CommunicationModule: React.FC = () => {
       ]
     },
     { 
-      id: '3', 
+      id: '6', 
       sender: 'Sistema (Alerta)', 
       sender_id: 'system',
       recipient: 'Todos',
@@ -188,13 +198,16 @@ const CommunicationModule: React.FC = () => {
           <h2 className="text-4xl font-black text-foreground tracking-tighter">Central de Comunicados</h2>
           <p className="text-muted-foreground font-medium">Registro histórico de todas as interações entre Administração e parceiros.</p>
         </div>
-        <Button 
-          onClick={() => setShowNewModal(true)}
-          className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 shadow-xl shadow-primary/20 flex items-center space-x-2 transition-all"
-        >
-          <Plus size={18} />
-          <span>Novo Comunicado</span>
-        </Button>
+        {/* Botão Novo Comunicado - OCULTO para OSC */}
+        {!isOSC && (
+          <Button 
+            onClick={() => setShowNewModal(true)}
+            className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 shadow-xl shadow-primary/20 flex items-center space-x-2 transition-all"
+          >
+            <Plus size={18} />
+            <span>Novo Comunicado</span>
+          </Button>
+        )}
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1">
