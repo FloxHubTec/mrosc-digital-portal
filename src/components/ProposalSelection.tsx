@@ -12,6 +12,7 @@ import { useProposals, Proposal } from '@/hooks/useProposals';
 import { usePublicCalls } from '@/hooks/usePublicCalls';
 import { useOSCs } from '@/hooks/useOSCs';
 import { supabase } from '@/integrations/supabase/client';
+import { useTheme } from '@/contexts/ThemeContext';
 import ExportDropdown from '@/components/ui/ExportDropdown';
 import { exportData, exportToPDF } from '@/utils/exportUtils';
 import jsPDF from 'jspdf';
@@ -34,6 +35,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     inabilitada: { color: 'bg-red-100 text-red-800', label: 'Inabilitada' },
     avaliada: { color: 'bg-purple-100 text-purple-800', label: 'Avaliada' },
     selecionada: { color: 'bg-green-100 text-green-800', label: 'Selecionada' },
+    classificada: { color: 'bg-teal-100 text-teal-800', label: 'Classificada' },
     desclassificada: { color: 'bg-gray-100 text-gray-800', label: 'Desclassificada' },
     convocada: { color: 'bg-indigo-100 text-indigo-800', label: 'Convocada' },
     diligencia: { color: 'bg-orange-100 text-orange-800', label: 'Em Diligência' },
@@ -44,8 +46,9 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 const ProposalSelectionModule: React.FC = () => {
   const { proposals, loading, createProposal, updateProposal, evaluateProposal, submitRecurso, respondRecurso, calculateRankings, getStatsByStatus, refetch } = useProposals();
-  const { publicCalls } = usePublicCalls();
+  const { publicCalls, updatePublicCall } = usePublicCalls();
   const { oscs } = useOSCs();
+  const { theme } = useTheme();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -145,27 +148,122 @@ const ProposalSelectionModule: React.FC = () => {
       toast.error('Selecione um chamamento específico para publicar o resultado');
       return;
     }
+
+    const chamamento = publicCalls.find(c => c.id === callFilter);
+    if (!chamamento) {
+      toast.error('Chamamento não encontrado');
+      return;
+    }
+
+    // Check if there are evaluated proposals
+    const proposalsToRank = proposals
+      .filter(p => p.public_call_id === callFilter && (p.status === 'avaliada' || p.status === 'habilitada'))
+      .sort((a, b) => (b.pontuacao_total || 0) - (a.pontuacao_total || 0));
+
+    if (proposalsToRank.length === 0) {
+      toast.error('Não há propostas avaliadas para publicar resultado');
+      return;
+    }
     
     try {
+      // 1. Calculate rankings
       await calculateRankings(callFilter);
       
-      // Update all evaluated proposals to "selecionada" status based on ranking
-      const proposalsToUpdate = filteredProposals
-        .filter(p => p.public_call_id === callFilter && p.status === 'avaliada')
-        .sort((a, b) => (b.pontuacao_total || 0) - (a.pontuacao_total || 0));
-      
-      for (let i = 0; i < proposalsToUpdate.length; i++) {
-        const status = i === 0 ? 'selecionada' : 'avaliada';
-        if (i === 0) {
-          await updateProposal(proposalsToUpdate[i].id, { status });
-        }
+      // 2. Update proposal statuses based on ranking
+      for (let i = 0; i < proposalsToRank.length; i++) {
+        const status = i === 0 ? 'selecionada' : 'classificada';
+        await updateProposal(proposalsToRank[i].id, { 
+          status,
+          ranking: i + 1
+        });
       }
       
+      // 3. Update public call status to "homologado"
+      await updatePublicCall(callFilter, { status: 'homologado' });
+
+      // 4. Generate result PDF
+      generateResultadoPDF(chamamento, proposalsToRank);
+      
       await refetch();
-      toast.success('Resultado publicado com sucesso! Rankings calculados e proposta vencedora selecionada.');
+      toast.success(
+        `Resultado publicado! ${proposalsToRank.length} proposta(s) classificada(s). ` +
+        `OSC vencedora: ${proposalsToRank[0].osc?.razao_social || 'N/A'}. ` +
+        `Resultado disponível no Portal de Transparência.`
+      );
     } catch (error) {
+      console.error('Erro ao publicar resultado:', error);
       toast.error('Erro ao publicar resultado');
     }
+  };
+
+  const generateResultadoPDF = (chamamento: any, propostas: Proposal[]) => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(theme.organizationName.toUpperCase(), 105, 15, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(theme.organizationSubtitle, 105, 21, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('RESULTADO FINAL DO PROCESSO SELETIVO', 105, 35, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Chamamento Público: ${chamamento.numero_edital}`, 14, 48);
+    doc.text(`Objeto: ${chamamento.objeto?.substring(0, 80)}${chamamento.objeto?.length > 80 ? '...' : ''}`, 14, 55);
+    doc.text(`Data de Publicação: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, 14, 62);
+    
+    // Winner highlight
+    if (propostas.length > 0) {
+      doc.setFillColor(34, 197, 94);
+      doc.rect(14, 70, 182, 20, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('OSC VENCEDORA', 105, 78, { align: 'center' });
+      doc.setFontSize(10);
+      doc.text(`${propostas[0].osc?.razao_social || 'N/A'} - Pontuação: ${propostas[0].pontuacao_total || 0} pontos`, 105, 85, { align: 'center' });
+      doc.setTextColor(0, 0, 0);
+    }
+
+    // Ranking table
+    doc.setFont('helvetica', 'bold');
+    doc.text('CLASSIFICAÇÃO GERAL:', 14, 100);
+
+    autoTable(doc, {
+      startY: 105,
+      head: [['Posição', 'OSC', 'CNPJ', 'Pontuação', 'Status']],
+      body: propostas.map((p, i) => [
+        `${i + 1}º`,
+        p.osc?.razao_social || '-',
+        p.osc?.cnpj || '-',
+        `${p.pontuacao_total || 0} pts`,
+        i === 0 ? 'SELECIONADA' : 'CLASSIFICADA'
+      ]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [15, 118, 110] },
+      alternateRowStyles: { fillColor: [240, 253, 250] },
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    
+    // Legal basis
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Resultado publicado conforme Art. 27 da Lei Federal 13.019/2014 (MROSC).', 14, finalY);
+    doc.text('Prazo para interposição de recurso: 5 (cinco) dias úteis a contar desta publicação.', 14, finalY + 5);
+    
+    // Footer
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('_______________________________', 105, finalY + 25, { align: 'center' });
+    doc.text('Presidente da Comissão de Seleção', 105, finalY + 30, { align: 'center' });
+
+    doc.save(`resultado-${chamamento.numero_edital}.pdf`);
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {

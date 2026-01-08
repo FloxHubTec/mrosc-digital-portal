@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Search,
   ChevronRight,
@@ -20,6 +20,9 @@ import {
   Paperclip,
   ShieldCheck,
   Loader2,
+  Trophy,
+  Award,
+  Medal,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import jsPDF from "jspdf";
@@ -31,6 +34,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { useTheme } from "@/contexts/ThemeContext";
 import { usePublicCalls, PublicCall } from "@/hooks/usePublicCalls";
+import { useProposals, Proposal } from "@/hooks/useProposals";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 // Interface para as fotos
 interface FotoEvidencia {
@@ -284,6 +289,7 @@ const mockLegislacao = [
 const TransparencyPortal: React.FC = () => {
   const { theme } = useTheme();
   const { publicCalls, loading: loadingCalls } = usePublicCalls();
+  const { proposals, loading: loadingProposals } = useProposals();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPartnership, setSelectedPartnership] = useState<Partnership | null>(null);
   const [selectedEdital, setSelectedEdital] = useState<Chamamento | null>(null);
@@ -304,6 +310,13 @@ const TransparencyPortal: React.FC = () => {
       return c;
     });
   }, [publicCalls]);
+
+  // Get proposals for a specific public call
+  const getProposalsForCall = (callId: string) => {
+    return proposals
+      .filter(p => p.public_call_id === callId)
+      .sort((a, b) => (a.ranking || 999) - (b.ranking || 999));
+  };
 
   const filteredPartnerships = mockPartnerships.filter((p) => {
     if (!searchTerm) return true;
@@ -995,11 +1008,11 @@ const TransparencyPortal: React.FC = () => {
             <div className="space-y-6 mt-4">
               <div className="flex items-center gap-3">
                 <Badge 
-                  variant={selectedPublicCall.status === "aberto" ? "default" : "secondary"}
-                  className="text-xs"
+                  variant={selectedPublicCall.status === "aberto" ? "default" : selectedPublicCall.status === "homologado" ? "outline" : "secondary"}
+                  className={`text-xs ${selectedPublicCall.status === "homologado" ? "bg-green-100 text-green-800 border-green-300" : ""}`}
                 >
                   {selectedPublicCall.status === "aberto" ? "INSCRIÇÕES ABERTAS" : 
-                   selectedPublicCall.status === "homologado" ? "HOMOLOGADO" : "ENCERRADO"}
+                   selectedPublicCall.status === "homologado" ? "✓ RESULTADO HOMOLOGADO" : "ENCERRADO"}
                 </Badge>
                 <span className="text-lg font-black text-primary">{selectedPublicCall.numero_edital}</span>
               </div>
@@ -1040,6 +1053,101 @@ const TransparencyPortal: React.FC = () => {
                   <p className="font-black text-primary text-2xl">
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedPublicCall.valor_total)}
                   </p>
+                </div>
+              )}
+
+              {/* RESULTADO - Show only when homologado */}
+              {selectedPublicCall.status === "homologado" && (
+                <div className="space-y-4">
+                  <div className="bg-green-50 border border-green-200 p-5 rounded-2xl">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Trophy className="text-green-600" size={20} />
+                      <p className="text-sm font-black text-green-800 uppercase tracking-wide">Resultado Final do Processo Seletivo</p>
+                    </div>
+                    
+                    {loadingProposals ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="w-5 h-5 animate-spin text-green-600" />
+                      </div>
+                    ) : (
+                      <>
+                        {/* Winner highlight */}
+                        {getProposalsForCall(selectedPublicCall.id).length > 0 && (
+                          <div className="bg-green-600 text-white p-4 rounded-xl mb-4">
+                            <div className="flex items-center gap-3">
+                              <Award className="w-8 h-8" />
+                              <div>
+                                <p className="text-xs font-bold uppercase opacity-90">OSC Vencedora</p>
+                                <p className="text-lg font-black">
+                                  {getProposalsForCall(selectedPublicCall.id)[0]?.osc?.razao_social || 'N/A'}
+                                </p>
+                                <p className="text-sm opacity-90">
+                                  Pontuação: {getProposalsForCall(selectedPublicCall.id)[0]?.pontuacao_total || 0} pontos
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Full ranking table */}
+                        <div className="bg-white rounded-xl overflow-hidden border border-green-200">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-green-100">
+                                <TableHead className="text-green-800 font-black text-xs">Posição</TableHead>
+                                <TableHead className="text-green-800 font-black text-xs">OSC</TableHead>
+                                <TableHead className="text-green-800 font-black text-xs">CNPJ</TableHead>
+                                <TableHead className="text-green-800 font-black text-xs text-center">Pontuação</TableHead>
+                                <TableHead className="text-green-800 font-black text-xs text-center">Status</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {getProposalsForCall(selectedPublicCall.id).map((proposal, index) => (
+                                <TableRow key={proposal.id} className={index === 0 ? "bg-green-50" : ""}>
+                                  <TableCell className="font-black text-green-800">
+                                    <div className="flex items-center gap-2">
+                                      {index === 0 && <Trophy className="w-4 h-4 text-yellow-500" />}
+                                      {index === 1 && <Medal className="w-4 h-4 text-gray-400" />}
+                                      {index === 2 && <Medal className="w-4 h-4 text-amber-600" />}
+                                      {index + 1}º
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="font-semibold text-foreground">
+                                    {proposal.osc?.razao_social || 'N/A'}
+                                  </TableCell>
+                                  <TableCell className="text-muted-foreground text-xs">
+                                    {proposal.osc?.cnpj || 'N/A'}
+                                  </TableCell>
+                                  <TableCell className="text-center font-bold text-primary">
+                                    {proposal.pontuacao_total || 0} pts
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge 
+                                      variant={index === 0 ? "default" : "secondary"}
+                                      className={index === 0 ? "bg-green-600" : ""}
+                                    >
+                                      {proposal.status === 'selecionada' ? 'SELECIONADA' : 'CLASSIFICADA'}
+                                    </Badge>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                              {getProposalsForCall(selectedPublicCall.id).length === 0 && (
+                                <TableRow>
+                                  <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                                    Nenhuma proposta classificada.
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+
+                        <p className="text-xs text-green-700 mt-3 italic">
+                          Resultado publicado conforme Art. 27 da Lei Federal 13.019/2014 (MROSC).
+                        </p>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
 
