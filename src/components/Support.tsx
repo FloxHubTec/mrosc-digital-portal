@@ -51,7 +51,24 @@ const SupportModule: React.FC = () => {
   const { user, profile } = useAuth();
   
   // Check if user is OSC
-  const isOSC = profile?.role === UserRole.OSC_LEGAL || profile?.role === UserRole.OSC_USER;
+  const isOSC = profile?.role === 'osc_user' || profile?.role === 'Usuário OSC' || profile?.role === 'Representante Legal OSC';
+  
+  // Check if user is Admin Master
+  const isAdminMaster = profile?.role === 'admin_master' || profile?.role === 'Administrador Master';
+  
+  // Check if user can create tickets (Admin Master, Técnico, Gestor, Controle)
+  const canCreateTicket = profile?.role === 'admin_master' || 
+                          profile?.role === 'Administrador Master' ||
+                          profile?.role === 'tecnico' || 
+                          profile?.role === 'Técnico - Execução Física' ||
+                          profile?.role === 'Técnico - Execução Financeira' ||
+                          profile?.role === 'gestor' || 
+                          profile?.role === 'Gestor da Parceria' ||
+                          profile?.role === 'controle' ||
+                          profile?.role === 'Controle Interno';
+  
+  // Same permission for training request
+  const canRequestTraining = canCreateTicket;
   
   const [searchTerm, setSearchTerm] = useState('');
   const [showTicketModal, setShowTicketModal] = useState(false);
@@ -118,6 +135,9 @@ const SupportModule: React.FC = () => {
   const ticketStats = getTicketStats();
   const filteredArticles = searchArticles(searchTerm);
   
+  // Filter tickets to show only user's own tickets
+  const userTickets = tickets.filter(t => t.user_id === user?.id);
+  
   // Use mock data for knowledge base if empty
   const displayArticles = filteredArticles.length > 0 ? filteredArticles : mockKnowledgeBase.filter(a => 
     a.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -128,8 +148,8 @@ const SupportModule: React.FC = () => {
   // Use mock data for events if empty
   const displayEvents = events.length > 0 ? events : mockTrainingEvents;
   
-  // Use mock data for tickets if empty
-  const displayTickets = tickets.length > 0 ? tickets : mockTickets;
+  // Use filtered user tickets or mock data
+  const displayTickets = userTickets.length > 0 ? userTickets : (user ? [] : mockTickets.slice(0, 1));
 
   const handleCreateTicket = async () => {
     if (!user || !ticketForm.titulo || !ticketForm.descricao) {
@@ -286,31 +306,33 @@ const SupportModule: React.FC = () => {
         </Card>
       )}
 
-      {/* Training Section */}
-      <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="p-4 bg-purple-600 rounded-2xl">
-                <GraduationCap size={28} className="text-white" />
+      {/* Training Section - Only for Admin Master, Técnico, Gestor, Controle */}
+      {canRequestTraining && (
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-purple-600 rounded-2xl">
+                  <GraduationCap size={28} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-purple-800 dark:text-purple-200">Treinamento e Capacitação</h3>
+                  <p className="text-sm text-purple-600 dark:text-purple-400">
+                    Solicite treinamentos personalizados para sua equipe ou OSC
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-black text-purple-800 dark:text-purple-200">Treinamento e Capacitação</h3>
-                <p className="text-sm text-purple-600 dark:text-purple-400">
-                  Solicite treinamentos personalizados para sua equipe ou OSC
-                </p>
-              </div>
+              <Button 
+                onClick={() => setShowTrainingModal(true)}
+                className="bg-purple-700 hover:bg-purple-800 text-white gap-2"
+              >
+                <GraduationCap size={16} />
+                Solicitar Agendamento de Treinamento
+              </Button>
             </div>
-            <Button 
-              onClick={() => setShowTrainingModal(true)}
-              className="bg-purple-700 hover:bg-purple-800 text-white gap-2"
-            >
-              <GraduationCap size={16} />
-              Solicitar Agendamento de Treinamento
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Training Request Modal */}
       <Dialog open={showTrainingModal} onOpenChange={setShowTrainingModal}>
@@ -381,48 +403,50 @@ const SupportModule: React.FC = () => {
           <TabsContent value="tickets" className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-bold">Meus Tickets de Suporte</h2>
-              <Dialog open={showTicketModal} onOpenChange={setShowTicketModal}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2"><Plus size={16} /> Novo Ticket</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader><DialogTitle>Abrir Ticket de Suporte</DialogTitle></DialogHeader>
-                  <div className="space-y-4 mt-4">
-                    <Input 
-                      placeholder="Título do problema *" 
-                      value={ticketForm.titulo}
-                      onChange={e => setTicketForm({ ...ticketForm, titulo: e.target.value })}
-                    />
-                    <Textarea 
-                      placeholder="Descreva seu problema detalhadamente *" 
-                      value={ticketForm.descricao}
-                      onChange={e => setTicketForm({ ...ticketForm, descricao: e.target.value })}
-                      rows={4}
-                    />
-                    <div className="grid grid-cols-2 gap-4">
-                      <Select value={ticketForm.categoria} onValueChange={v => setTicketForm({ ...ticketForm, categoria: v })}>
-                        <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="geral">Geral</SelectItem>
-                          <SelectItem value="tecnico">Técnico</SelectItem>
-                          <SelectItem value="financeiro">Financeiro</SelectItem>
-                          <SelectItem value="acesso">Acesso</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select value={ticketForm.prioridade} onValueChange={v => setTicketForm({ ...ticketForm, prioridade: v })}>
-                        <SelectTrigger><SelectValue placeholder="Prioridade" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="baixa">Baixa</SelectItem>
-                          <SelectItem value="media">Média</SelectItem>
-                          <SelectItem value="alta">Alta</SelectItem>
-                          <SelectItem value="urgente">Urgente</SelectItem>
-                        </SelectContent>
-                      </Select>
+              {canCreateTicket && (
+                <Dialog open={showTicketModal} onOpenChange={setShowTicketModal}>
+                  <DialogTrigger asChild>
+                    <Button className="gap-2"><Plus size={16} /> Novo Ticket</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader><DialogTitle>Abrir Ticket de Suporte</DialogTitle></DialogHeader>
+                    <div className="space-y-4 mt-4">
+                      <Input 
+                        placeholder="Título do problema *" 
+                        value={ticketForm.titulo}
+                        onChange={e => setTicketForm({ ...ticketForm, titulo: e.target.value })}
+                      />
+                      <Textarea 
+                        placeholder="Descreva seu problema detalhadamente *" 
+                        value={ticketForm.descricao}
+                        onChange={e => setTicketForm({ ...ticketForm, descricao: e.target.value })}
+                        rows={4}
+                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <Select value={ticketForm.categoria} onValueChange={v => setTicketForm({ ...ticketForm, categoria: v })}>
+                          <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="geral">Geral</SelectItem>
+                            <SelectItem value="tecnico">Técnico</SelectItem>
+                            <SelectItem value="financeiro">Financeiro</SelectItem>
+                            <SelectItem value="acesso">Acesso</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select value={ticketForm.prioridade} onValueChange={v => setTicketForm({ ...ticketForm, prioridade: v })}>
+                          <SelectTrigger><SelectValue placeholder="Prioridade" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="baixa">Baixa</SelectItem>
+                            <SelectItem value="media">Média</SelectItem>
+                            <SelectItem value="alta">Alta</SelectItem>
+                            <SelectItem value="urgente">Urgente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button onClick={handleCreateTicket} className="w-full">Enviar Ticket</Button>
                     </div>
-                    <Button onClick={handleCreateTicket} className="w-full">Enviar Ticket</Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -516,8 +540,8 @@ const SupportModule: React.FC = () => {
                 onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
-            {/* Botão Novo Artigo - OCULTO para OSC */}
-            {!isOSC && (
+            {/* Botão Novo Artigo - Apenas Admin Master */}
+            {isAdminMaster && (
               <Dialog open={showArticleModal} onOpenChange={setShowArticleModal}>
                 <DialogTrigger asChild>
                   <Button className="gap-2"><Plus size={16} /> Novo Artigo</Button>
@@ -615,8 +639,8 @@ const SupportModule: React.FC = () => {
         <TabsContent value="events" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-bold">Eventos e Treinamentos</h2>
-            {/* Botão Novo Evento - OCULTO para OSC */}
-            {!isOSC && (
+            {/* Botão Novo Evento - Apenas Admin Master */}
+            {isAdminMaster && (
               <Dialog open={showEventModal} onOpenChange={setShowEventModal}>
                 <DialogTrigger asChild>
                   <Button className="gap-2"><Plus size={16} /> Novo Evento</Button>

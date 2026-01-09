@@ -11,6 +11,8 @@ interface LabelDictionary {
 interface LabelContextType {
   labels: LabelDictionary;
   updateLabel: (key: string, value: string) => void;
+  addLabel: (key: string, value: string) => void;
+  removeLabel: (key: string) => void;
   getLabel: (key: string) => string;
 }
 
@@ -37,10 +39,33 @@ export const LabelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     });
   };
 
+  const addLabel = (key: string, value: string) => {
+    if (key && !labels[key]) {
+      setLabels(prev => {
+        const updated = { ...prev, [key]: value };
+        localStorage.setItem('mrosc_labels', JSON.stringify(updated));
+        return updated;
+      });
+    }
+  };
+
+  const removeLabel = (key: string) => {
+    // Don't allow removing default labels
+    const defaultKeys = ['chamamento', 'edital', 'osc', 'parceria'];
+    if (!defaultKeys.includes(key)) {
+      setLabels(prev => {
+        const updated = { ...prev };
+        delete updated[key];
+        localStorage.setItem('mrosc_labels', JSON.stringify(updated));
+        return updated;
+      });
+    }
+  };
+
   const getLabel = (key: string) => labels[key] || key;
 
   return (
-    <LabelContext.Provider value={{ labels, updateLabel, getLabel }}>
+    <LabelContext.Provider value={{ labels, updateLabel, addLabel, removeLabel, getLabel }}>
       {children}
     </LabelContext.Provider>
   );
