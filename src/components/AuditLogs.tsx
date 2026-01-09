@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { History, Search, Filter, ShieldCheck, Lock, ArrowLeft, X, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
-import ExportDropdown from "./ui/ExportDropdown";
+import AuditExportDropdown from "./ui/AuditExportDropdown";
 import { exportData, ExportFormat } from "@/utils/exportUtils";
 import { toast } from "sonner";
 
@@ -14,10 +14,12 @@ const AuditLogsModule: React.FC = () => {
     dateTo: "",
   });
 
-  const logs = [
+  // Mock logs - filtering out OSC users (only gov staff: Admin Master, Técnico, Gestor)
+  const allLogs = [
     {
       id: "1",
       user: "Admin Master",
+      userRole: "admin_master",
       action: "EDIT",
       resource: "Parceria #PRT-001",
       details: "Alteração de cronograma financeiro",
@@ -28,6 +30,7 @@ const AuditLogsModule: React.FC = () => {
     {
       id: "2",
       user: "Gestor Saúde",
+      userRole: "gestor",
       action: "CREATE",
       resource: "Termo de Fomento",
       details: "Criação de novo instrumento jurídico",
@@ -37,17 +40,19 @@ const AuditLogsModule: React.FC = () => {
     },
     {
       id: "3",
-      user: "OSC Futuro",
-      action: "LOGIN",
-      resource: "Sistema",
-      details: "Acesso realizado via portal OSC",
+      user: "Técnico Financeiro",
+      userRole: "tecnico",
+      action: "UPDATE",
+      resource: "Prestação de Contas #PC-042",
+      details: "Validação de documentos fiscais",
       date: "19/10/2023 09:00",
-      ip: "177.42.12.98",
+      ip: "192.168.0.12",
       hash: "5c12...a342",
     },
     {
       id: "4",
       user: "Controle Interno",
+      userRole: "controle",
       action: "DELETE",
       resource: "Rascunho Plano",
       details: "Remoção de documento obsoleto",
@@ -58,6 +63,7 @@ const AuditLogsModule: React.FC = () => {
     {
       id: "5",
       user: "Admin Master",
+      userRole: "admin_master",
       action: "UPDATE",
       resource: "OSC - Instituto Esperança",
       details: "Atualização de dados cadastrais e CNPJ",
@@ -68,6 +74,7 @@ const AuditLogsModule: React.FC = () => {
     {
       id: "6",
       user: "Gestor Saúde",
+      userRole: "gestor",
       action: "UPDATE",
       resource: "Plano de Trabalho #PT-042",
       details: "Atualização de metas e cronograma",
@@ -78,6 +85,7 @@ const AuditLogsModule: React.FC = () => {
     {
       id: "7",
       user: "Admin Master",
+      userRole: "admin_master",
       action: "EXPORT",
       resource: "Relatório SICOM",
       details: "Exportação de dados para TCE-MG",
@@ -87,15 +95,22 @@ const AuditLogsModule: React.FC = () => {
     },
     {
       id: "8",
-      user: "OSC Vida Plena",
+      user: "Técnico Físico",
+      userRole: "tecnico",
       action: "UPLOAD",
-      resource: "Prestação de Contas",
-      details: "Upload de comprovantes fiscais",
+      resource: "Relatório de Visita",
+      details: "Upload de fotos e relatório de monitoramento",
       date: "14/10/2023 16:30",
-      ip: "177.42.15.22",
+      ip: "192.168.0.13",
       hash: "m3n4...o5p6",
     },
   ];
+
+  // Filter logs to only show gov staff (Admin Master, Técnico, Gestor, Controle)
+  // OSC users are excluded from audit trail as requested
+  const logs = allLogs.filter(log => 
+    ['admin_master', 'gestor', 'tecnico', 'controle'].includes(log.userRole)
+  );
 
   const actionOptions = [
     { value: "", label: "Todas as Ações" },
@@ -157,7 +172,7 @@ const AuditLogsModule: React.FC = () => {
             Registro imutável de todas as ações realizadas no ecossistema.
           </p>
         </div>
-        <ExportDropdown onExport={handleExport} />
+        <AuditExportDropdown onExport={handleExport} />
       </header>
 
       <div className="bg-card rounded-[2.5rem] shadow-xl border border-border overflow-hidden">

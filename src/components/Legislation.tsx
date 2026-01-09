@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { 
   Scale, FileText, Download, Search, 
   Eye, Sparkles, Printer, ArrowLeft, Plus, X,
-  Loader2, Edit, ExternalLink, Link2, FileSpreadsheet
+  Loader2, Edit, ExternalLink, Link2, FileSpreadsheet, CheckCircle
 } from 'lucide-react';
 import { GeminiService } from '../services/gemini';
 import { useLegislation } from '@/hooks/useLegislation';
@@ -343,7 +343,28 @@ A prestação de contas deverá ser realizada eletronicamente através da plataf
             </label>
             <select
               value={linkedPartnership}
-              onChange={(e) => setLinkedPartnership(e.target.value)}
+              onChange={(e) => {
+                const newPartnershipId = e.target.value;
+                setLinkedPartnership(newPartnershipId);
+                
+                // Auto-fill document content when partnership changes
+                if (newPartnershipId && selectedDoc) {
+                  const partnership = partnerships.find(p => p.id === newPartnershipId);
+                  if (partnership) {
+                    let content = selectedDoc.conteudo || '';
+                    content = content.replace(/\[NOME_OSC\]|\[NOME DA ORGANIZAÇÃO DA SOCIEDADE CIVIL\]/g, partnership.osc?.razao_social || '[OSC]');
+                    content = content.replace(/\[VALOR\]/g, partnership.valor_repassado 
+                      ? `R$ ${partnership.valor_repassado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
+                      : '[VALOR]');
+                    content = content.replace(/\[CNPJ\]/g, partnership.osc?.cnpj || '[CNPJ]');
+                    content = content.replace(/\[NUMERO_TERMO\]|\[00X\]/g, partnership.numero_termo || '[NUMERO]');
+                    content = content.replace(/\[ANO\]/g, new Date().getFullYear().toString());
+                    setAiContent(content);
+                  }
+                } else {
+                  setAiContent(null);
+                }
+              }}
               className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm appearance-none cursor-pointer"
             >
               <option value="">Selecione uma parceria...</option>
@@ -355,25 +376,12 @@ A prestação de contas deverá ser realizada eletronicamente através da plataf
             </select>
             
             {linkedPartnership && (
-              <button
-                onClick={() => {
-                  const partnership = partnerships.find(p => p.id === linkedPartnership);
-                  if (!partnership || !selectedDoc) return;
-                  
-                  let content = aiContent || selectedDoc.conteudo || '';
-                  content = content.replace(/\[NOME_OSC\]|\[NOME DA ORGANIZAÇÃO DA SOCIEDADE CIVIL\]/g, partnership.osc?.razao_social || '[OSC]');
-                  content = content.replace(/\[VALOR\]/g, partnership.valor_repassado 
-                    ? `R$ ${partnership.valor_repassado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
-                    : '[VALOR]');
-                  content = content.replace(/\[CNPJ\]/g, partnership.osc?.cnpj || '[CNPJ]');
-                  
-                  setAiContent(content);
-                }}
-                className="mt-4 w-full py-3 bg-primary text-primary-foreground rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-all"
-              >
-                <FileSpreadsheet size={14} />
-                Preencher com Dados da Parceria
-              </button>
+              <div className="mt-4 p-4 bg-success/10 border border-success/20 rounded-xl">
+                <div className="flex items-center gap-2 text-success text-xs font-black uppercase">
+                  <CheckCircle size={14} />
+                  Documento atualizado com dados da parceria
+                </div>
+              </div>
             )}
           </div>
         </div>
