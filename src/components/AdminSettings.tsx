@@ -694,6 +694,41 @@ const AdminSettings: React.FC = () => {
             Personalize os termos exibidos no sistema de acordo com a nomenclatura do seu município.
           </p>
 
+          {/* Add New Term */}
+          <div className="mb-8 p-6 bg-muted/50 rounded-2xl">
+            <h4 className="font-black text-foreground mb-4 flex items-center gap-2">
+              <Plus size={16} className="text-primary" />
+              Adicionar Novo Termo
+            </h4>
+            <div className="flex flex-col md:flex-row gap-4">
+              <input
+                type="text"
+                placeholder="Chave do termo (ex: convenio)"
+                className="flex-1 px-4 py-3 bg-card border border-border rounded-xl text-sm outline-none focus:ring-4 focus:ring-primary/20 text-foreground"
+                id="newTermKey"
+              />
+              <input
+                type="text"
+                placeholder="Valor personalizado (ex: Convênio)"
+                className="flex-1 px-4 py-3 bg-card border border-border rounded-xl text-sm outline-none focus:ring-4 focus:ring-primary/20 text-foreground"
+                id="newTermValue"
+              />
+              <Button onClick={() => {
+                const keyInput = document.getElementById('newTermKey') as HTMLInputElement;
+                const valueInput = document.getElementById('newTermValue') as HTMLInputElement;
+                if (keyInput?.value && valueInput?.value) {
+                  setEditingLabels({ ...editingLabels, [keyInput.value]: valueInput.value });
+                  keyInput.value = '';
+                  valueInput.value = '';
+                  toast({ title: "Termo adicionado!", description: "Clique em 'Salvar Dicionário' para confirmar." });
+                }
+              }} className="gap-2 whitespace-nowrap">
+                <Plus size={16} />
+                Adicionar
+              </Button>
+            </div>
+          </div>
+
           <div className="space-y-6 max-w-xl">
             {Object.entries(editingLabels).map(([key, value]) => (
               <div key={key} className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
