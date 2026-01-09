@@ -32,8 +32,8 @@ interface Message {
 const CommunicationModule: React.FC = () => {
   const { user, profile } = useAuth();
   
-  // Check if user is OSC
-  const isOSC = profile?.role === UserRole.OSC_LEGAL || profile?.role === UserRole.OSC_USER;
+  // Check if user is admin_master
+  const isAdminMaster = profile?.role === UserRole.MASTER || profile?.role === UserRole.SUPERADMIN;
   
   const [messages, setMessages] = useState<Message[]>([
     ...mockCommunications.map(c => ({
@@ -169,7 +169,7 @@ const CommunicationModule: React.FC = () => {
     toast.success('Resposta enviada!');
   };
 
-  const handleOpenEmail = () => {
+  const handleOpenEmail = async () => {
     if (!selectedMessage) return;
     
     const subject = encodeURIComponent(`Re: ${selectedMessage.subject}`);
@@ -177,7 +177,11 @@ const CommunicationModule: React.FC = () => {
       `\n\n---\nMensagem original:\nDe: ${selectedMessage.sender}\nAssunto: ${selectedMessage.subject}\n\n${selectedMessage.message}`
     );
     
+    // Open email client
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    
+    // Show toast confirmation
+    toast.success('Email aberto no seu cliente de correio!');
   };
 
   const handleSelectMessage = (msg: Message) => {
@@ -198,8 +202,8 @@ const CommunicationModule: React.FC = () => {
           <h2 className="text-4xl font-black text-foreground tracking-tighter">Central de Comunicados</h2>
           <p className="text-muted-foreground font-medium">Registro histórico de todas as interações entre Administração e parceiros.</p>
         </div>
-        {/* Botão Novo Comunicado - OCULTO para OSC */}
-        {!isOSC && (
+        {/* Botão Novo Comunicado - APENAS para Admin Master */}
+        {isAdminMaster && (
           <Button 
             onClick={() => setShowNewModal(true)}
             className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 shadow-xl shadow-primary/20 flex items-center space-x-2 transition-all"
