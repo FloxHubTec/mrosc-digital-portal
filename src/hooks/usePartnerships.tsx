@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './useAuth';
 
 export interface Partnership {
   id: string;
@@ -12,6 +13,7 @@ export interface Partnership {
   vigencia_fim: string | null;
   public_call_id: string | null;
   created_at: string;
+  deleted_at?: string | null;
   // Joined data
   osc?: {
     razao_social: string;
@@ -23,23 +25,32 @@ export interface Partnership {
   };
 }
 
-export function usePartnerships() {
+export function usePartnerships(filterByUserOsc: boolean = false) {
   const [partnerships, setPartnerships] = useState<Partnership[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { profile } = useAuth();
 
   const fetchPartnerships = async () => {
     setLoading(true);
     setError(null);
     
-    const { data, error } = await supabase
+    let query = supabase
       .from('partnerships')
       .select(`
         *,
         osc:oscs(razao_social, cnpj),
         public_call:public_calls(numero_edital, objeto)
       `)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
+    
+    // If filtering by user's OSC (for OSC users)
+    if (filterByUserOsc && profile?.osc_id) {
+      query = query.eq('osc_id', profile.osc_id);
+    }
+    
+    const { data, error } = await query;
     
     if (error) {
       setError(error.message);
@@ -53,7 +64,7 @@ export function usePartnerships() {
 
   useEffect(() => {
     fetchPartnerships();
-  }, []);
+  }, [filterByUserOsc, profile?.osc_id]);
 
   const createPartnership = async (partnership: {
     osc_id: string;
@@ -105,6 +116,22 @@ export function usePartnerships() {
     return { data, error: null };
   };
 
+  // Soft delete - sets deleted_at instead of actually deleting
+  const deletePartnership = async (id: string) => {
+    const { error } = await supabase
+      .from('partnerships')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id);
+    
+    if (error) {
+      console.error('Error deleting partnership:', error);
+      return { error };
+    }
+    
+    setPartnerships(prev => prev.filter(p => p.id !== id));
+    return { error: null };
+  };
+
   return {
     partnerships,
     loading,
@@ -112,5 +139,6 @@ export function usePartnerships() {
     refetch: fetchPartnerships,
     createPartnership,
     updatePartnership,
+    deletePartnership,
   };
 }

@@ -775,10 +775,34 @@ const OSCDocumentation: React.FC = () => {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="icon" title="Visualizar">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  title="Visualizar"
+                                  onClick={() => {
+                                    if (doc.file_url && doc.file_url !== '#') {
+                                      window.open(doc.file_url, '_blank', 'noopener,noreferrer');
+                                    }
+                                  }}
+                                >
                                   <Eye size={16} />
                                 </Button>
-                                <Button variant="ghost" size="icon" title="Download">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  title="Download"
+                                  onClick={() => {
+                                    if (doc.file_url && doc.file_url !== '#') {
+                                      const link = document.createElement('a');
+                                      link.href = doc.file_url;
+                                      link.download = doc.file_name || 'documento';
+                                      link.target = '_blank';
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                    }
+                                  }}
+                                >
                                   <Download size={16} />
                                 </Button>
                                 {(doc.status === 'expired' || doc.status === 'expiring') && (
