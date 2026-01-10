@@ -122,9 +122,16 @@ const MainApp: React.FC = () => {
 
   const { theme } = useTheme();
 
+  const handleSidebarItemClick = () => {
+    // Close sidebar on mobile after clicking an item
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background overflow-hidden font-sans">
-      <aside className={`bg-sidebar text-sidebar-foreground w-72 transition-all duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed md:relative z-50 h-full border-r border-sidebar-border overflow-y-auto scrollbar-hide`}>
+      <aside className={`bg-sidebar text-sidebar-foreground w-72 transition-all duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed md:relative z-50 h-full border-r border-sidebar-border overflow-y-auto scrollbar-hide flex flex-col`}>
         <div className="p-6 flex items-center justify-between border-b border-sidebar-border">
           <div className="flex items-center space-x-3">
             <DynamicLogo size="sm" variant="sidebar" />
@@ -140,7 +147,7 @@ const MainApp: React.FC = () => {
         {isOSCUser && (
           <>
             <div className="px-4 py-4 text-[10px] font-bold text-sidebar-primary uppercase tracking-widest">Minha OSC</div>
-            <nav className="px-4 space-y-1">
+            <nav className="px-4 space-y-1" onClick={handleSidebarItemClick}>
               <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" active={location.pathname === '/'} />
               <SidebarItem to="/my-documents" icon={FolderOpen} label="Minha Documentação" active={location.pathname === '/my-documents'} />
               <SidebarItem to="/partnerships" icon={FileSignature} label="Minhas Parcerias" active={location.pathname.startsWith('/partnerships')} />
@@ -154,7 +161,7 @@ const MainApp: React.FC = () => {
         {!isOSCUser && (
           <>
             <div className="px-4 py-4 text-[10px] font-bold text-sidebar-primary uppercase tracking-widest">Operacional</div>
-            <nav className="px-4 space-y-1">
+            <nav className="px-4 space-y-1" onClick={handleSidebarItemClick}>
               <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" active={location.pathname === '/'} />
               <SidebarItem to="/amendments" icon={FileText} label="Emendas Parlamentares" active={location.pathname === '/amendments'} hidden={!canAccess('/amendments')} />
               <SidebarItem to="/pmis" icon={Briefcase} label="PMIS" active={location.pathname === '/pmis'} hidden={!canAccess('/pmis')} />
@@ -166,7 +173,7 @@ const MainApp: React.FC = () => {
             </nav>
 
             <div className="px-4 py-4 text-[10px] font-bold text-sidebar-primary uppercase tracking-widest mt-2 border-t border-sidebar-border pt-6">Gestão e Dados</div>
-            <nav className="px-4 space-y-1">
+            <nav className="px-4 space-y-1" onClick={handleSidebarItemClick}>
               <SidebarItem to="/oscs" icon={Users} label="Cadastro OSCs" active={location.pathname === '/oscs'} hidden={!canAccess('/oscs')} />
               <SidebarItem to="/reports" icon={BarChartHorizontal} label="Relatórios e BI" active={location.pathname === '/reports'} hidden={!canAccess('/reports')} />
               <SidebarItem to="/legislation" icon={Scale} label="Legislação e Modelos" active={location.pathname === '/legislation'} hidden={!canAccess('/legislation')} />
@@ -176,7 +183,7 @@ const MainApp: React.FC = () => {
         )}
 
         <div className="px-4 py-4 text-[10px] font-bold text-sidebar-primary uppercase tracking-widest mt-2 border-t border-sidebar-border pt-6">Controle e Ajuda</div>
-        <nav className="px-4 space-y-1 mb-24">
+        <nav className="px-4 space-y-1 flex-1" onClick={handleSidebarItemClick}>
           <SidebarItem to="/logs" icon={History} label="Audit Trail (LGPD)" active={location.pathname === '/logs'} hidden={!canAccess('/logs')} />
           <SidebarItem to="/support" icon={HelpCircle} label="Suporte" active={location.pathname === '/support'} />
           <SidebarItem to="/integrations" icon={Link2} label="Integrações" active={location.pathname === '/integrations'} hidden={!canAccess('/integrations')} />
@@ -185,7 +192,8 @@ const MainApp: React.FC = () => {
           <SidebarItem to="/transparency" icon={Eye} label="Portal Público" active={false} />
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-sidebar-accent border-t border-sidebar-border">
+        {/* User Profile in Footer */}
+        <div className="mt-auto p-4 bg-sidebar-accent border-t border-sidebar-border">
           <div className="flex items-center space-x-3">
             <div className="w-9 h-9 rounded-xl bg-sidebar-primary flex items-center justify-center font-bold text-sm text-sidebar-primary-foreground uppercase">{currentUser.name.substring(0,2)}</div>
             <div className="overflow-hidden flex-1">

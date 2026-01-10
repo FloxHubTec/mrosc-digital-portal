@@ -217,13 +217,15 @@ const AccountabilityModule: React.FC = () => {
         </div>
         
         {selectedPartnershipId && (
-          <button 
-            onClick={() => setShowModal(true)}
-            className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 shadow-xl flex items-center space-x-2 transition-all active:scale-95"
-          >
-            <Plus size={18} />
-            <span>Nova Transação</span>
-          </button>
+          <div className="flex flex-wrap gap-4">
+            <button 
+              onClick={() => setShowModal(true)}
+              className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 shadow-xl flex items-center space-x-2 transition-all active:scale-95"
+            >
+              <Plus size={18} />
+              <span>Nova Transação</span>
+            </button>
+          </div>
         )}
       </header>
 

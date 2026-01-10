@@ -10,6 +10,7 @@ export interface OSC {
   validade_cnd: string | null;
   logo_url: string | null;
   created_at: string;
+  deleted_at?: string | null;
 }
 
 export function useOSCs() {
@@ -25,6 +26,7 @@ export function useOSCs() {
     const { data, error } = await supabase
       .from('oscs')
       .select('*')
+      .is('deleted_at', null)
       .order('razao_social', { ascending: true });
     
     if (error) {
@@ -41,7 +43,7 @@ export function useOSCs() {
     fetchOSCs();
   }, []);
 
-  const createOSC = async (osc: Omit<OSC, 'id' | 'created_at'>) => {
+  const createOSC = async (osc: Omit<OSC, 'id' | 'created_at' | 'deleted_at'>) => {
     const { data, error } = await supabase
       .from('oscs')
       .insert([osc])
@@ -74,10 +76,11 @@ export function useOSCs() {
     return { data, error: null };
   };
 
+  // Soft delete - sets deleted_at instead of actually deleting
   const deleteOSC = async (id: string) => {
     const { error } = await supabase
       .from('oscs')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
     
     if (error) {

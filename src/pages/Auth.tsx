@@ -1,21 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Mail, Lock, User, ArrowRight, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
-import { UserRole } from '@/types';
 
 const Auth: React.FC = () => {
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState('osc_user');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState('');
 
-  const { user, signIn, signUp } = useAuth();
+  const { user, signIn } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
 
@@ -28,35 +23,15 @@ const Auth: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
     setLoading(true);
 
     try {
-      if (isLogin) {
-        const { error } = await signIn(email, password);
-        if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            setError('E-mail ou senha incorretos.');
-          } else {
-            setError(error.message);
-          }
-        }
-      } else {
-        if (password.length < 6) {
-          setError('A senha deve ter pelo menos 6 caracteres.');
-          setLoading(false);
-          return;
-        }
-        
-        const { error } = await signUp(email, password, fullName, role);
-        if (error) {
-          if (error.message.includes('already registered')) {
-            setError('Este e-mail já está cadastrado. Faça login.');
-          } else {
-            setError(error.message);
-          }
+      const { error } = await signIn(email, password);
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          setError('E-mail ou senha incorretos.');
         } else {
-          setSuccess('Conta criada! Verifique seu e-mail para confirmar o cadastro.');
+          setError(error.message);
         }
       }
     } catch (err: any) {
@@ -65,14 +40,6 @@ const Auth: React.FC = () => {
       setLoading(false);
     }
   };
-
-  // Mapeamento: label exibido -> valor do banco de dados
-  const roleOptions = [
-    { label: 'Usuário OSC', value: 'osc_user' },
-    { label: 'Gestor da Parceria', value: 'gestor' },
-    { label: 'Técnico', value: 'tecnico' },
-    { label: 'Administrador Master', value: 'admin_master' },
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sidebar-background via-sidebar-background to-primary/30 flex items-center justify-center p-4">
@@ -94,48 +61,19 @@ const Auth: React.FC = () => {
           </p>
         </div>
 
-        {/* Card de Login/Registro */}
+        {/* Card de Login */}
         <div className="bg-card rounded-[2.5rem] shadow-2xl p-10 border border-border">
-          {/* Toggle Login/Registro */}
-          <div className="flex bg-muted p-1.5 rounded-2xl mb-8">
-            <button
-              onClick={() => { setIsLogin(true); setError(''); setSuccess(''); }}
-              className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                isLogin ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:text-primary'
-              }`}
-            >
-              Entrar
-            </button>
-            <button
-              onClick={() => { setIsLogin(false); setError(''); setSuccess(''); }}
-              className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                !isLogin ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:text-primary'
-              }`}
-            >
-              Cadastrar
-            </button>
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h2 className="text-xl font-black text-foreground uppercase tracking-widest">
+              Acesso ao Sistema
+            </h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              Entre com suas credenciais institucionais
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {!isLogin && (
-              <div>
-                <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
-                  Nome Completo
-                </label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Seu nome completo"
-                    required={!isLogin}
-                    className="w-full pl-12 pr-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20 transition-all"
-                  />
-                </div>
-              </div>
-            )}
-
             <div>
               <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
                 E-mail
@@ -171,34 +109,10 @@ const Auth: React.FC = () => {
               </div>
             </div>
 
-            {!isLogin && (
-              <div>
-                <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">
-                  Perfil de Acesso
-                </label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20 transition-all appearance-none cursor-pointer"
-                >
-                  {roleOptions.map((r) => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
             {error && (
               <div className="flex items-center gap-3 p-4 bg-destructive/10 text-destructive rounded-2xl text-sm">
                 <AlertCircle size={18} />
                 <span>{error}</span>
-              </div>
-            )}
-
-            {success && (
-              <div className="flex items-center gap-3 p-4 bg-success/10 text-success rounded-2xl text-sm">
-                <ShieldCheck size={18} />
-                <span>{success}</span>
               </div>
             )}
 
@@ -211,21 +125,25 @@ const Auth: React.FC = () => {
                 <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
               ) : (
                 <>
-                  {isLogin ? 'Acessar Sistema' : 'Criar Conta'}
+                  Acessar Sistema
                   <ArrowRight size={18} />
                 </>
               )}
             </button>
           </form>
 
-          {isLogin && (
-            <p className="text-center text-xs text-muted-foreground mt-6">
-              Esqueceu sua senha?{' '}
-              <button className="text-primary font-bold hover:underline">
-                Recuperar acesso
-              </button>
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            Esqueceu sua senha?{' '}
+            <button className="text-primary font-bold hover:underline">
+              Recuperar acesso
+            </button>
+          </p>
+          
+          <div className="mt-6 pt-6 border-t border-border text-center">
+            <p className="text-xs text-muted-foreground">
+              A criação de novos usuários é restrita ao Administrador.
             </p>
-          )}
+          </div>
         </div>
 
         {/* Footer */}

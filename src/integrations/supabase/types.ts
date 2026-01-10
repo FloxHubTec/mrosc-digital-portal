@@ -145,6 +145,30 @@ export type Database = {
           },
         ]
       }
+      app_settings: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string | null
@@ -311,6 +335,7 @@ export type Database = {
         Row: {
           cnpj: string
           created_at: string
+          deleted_at: string | null
           id: string
           logo_url: string | null
           razao_social: string
@@ -320,6 +345,7 @@ export type Database = {
         Insert: {
           cnpj: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
           logo_url?: string | null
           razao_social: string
@@ -329,6 +355,7 @@ export type Database = {
         Update: {
           cnpj?: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
           logo_url?: string | null
           razao_social?: string
@@ -340,6 +367,7 @@ export type Database = {
       partnerships: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           numero_termo: string | null
           osc_id: string
@@ -352,6 +380,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           numero_termo?: string | null
           osc_id: string
@@ -364,6 +393,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           numero_termo?: string | null
           osc_id?: string

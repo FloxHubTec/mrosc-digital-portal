@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Eye, FileSignature, ArrowLeft, Edit, CheckCircle, ClipboardList, AlertTriangle, X, Loader2, Calendar, DollarSign, ShieldCheck, Download, FileText } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Plus, Eye, FileSignature, ArrowLeft, Edit, CheckCircle, ClipboardList, AlertTriangle, X, Loader2, Calendar, DollarSign, ShieldCheck, Download, FileText, Search, Link2, Copy } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { usePartnerships } from '@/hooks/usePartnerships';
 import { useOSCs } from '@/hooks/useOSCs';
@@ -8,6 +8,7 @@ import { useAuth, getRoleEnum } from '@/hooks/useAuth';
 import { UserRole } from '@/types';
 import WorkPlanEditor from './WorkPlanEditor';
 import jsPDF from 'jspdf';
+import { Input } from '@/components/ui/input';
 
 const StatusBadge = ({ status }: { status: string | null }) => {
   const styles: Record<string, string> = {
@@ -32,20 +33,25 @@ const StatusBadge = ({ status }: { status: string | null }) => {
 };
 
 const PartnershipsModule: React.FC = () => {
-  const { partnerships, loading, createPartnership, updatePartnership } = usePartnerships();
-  const { oscs, loading: loadingOscs } = useOSCs();
-  const { publicCalls } = usePublicCalls();
   const { profile } = useAuth();
   
   // Check if user is government staff (gestor)
   const currentRole = profile?.role ? getRoleEnum(profile.role) : UserRole.OSC_USER;
   const isGestor = ![UserRole.OSC_LEGAL, UserRole.OSC_USER].includes(currentRole);
+  const isOSCUser = currentRole === UserRole.OSC_LEGAL || currentRole === UserRole.OSC_USER;
+  
+  // Filter partnerships by OSC for OSC users
+  const { partnerships, loading, createPartnership, updatePartnership } = usePartnerships(isOSCUser);
+  const { oscs, loading: loadingOscs } = useOSCs();
+  const { publicCalls } = usePublicCalls();
   
   const [selectedPartnership, setSelectedPartnership] = useState<typeof partnerships[0] | null>(null);
   const [view, setView] = useState<'list' | 'detail' | 'create' | 'workplan'>('list');
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  
   const [formData, setFormData] = useState({
     osc_id: '',
     numero_termo: '',
@@ -56,6 +62,26 @@ const PartnershipsModule: React.FC = () => {
     vigencia_fim: '',
     public_call_id: '',
   });
+  
+  // Filter partnerships by search term
+  const filteredPartnerships = useMemo(() => {
+    if (!searchTerm) return partnerships;
+    const term = searchTerm.toLowerCase();
+    return partnerships.filter(p => 
+      p.osc?.razao_social?.toLowerCase().includes(term) ||
+      p.numero_termo?.toLowerCase().includes(term) ||
+      p.status?.toLowerCase().includes(term) ||
+      (p.valor_repassado?.toString() || '').includes(term)
+    );
+  }, [partnerships, searchTerm]);
+  
+  // Generate public link for partnership (Art. 11)
+  const handleCopyPublicLink = (partnershipId: string) => {
+    const baseUrl = window.location.origin;
+    const publicLink = `${baseUrl}/#/transparency/partnership/${partnershipId}`;
+    navigator.clipboard.writeText(publicLink);
+    toast({ title: "Link copiado!", description: "Link público da parceria copiado para a área de transferência." });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,17 +216,35 @@ const PartnershipsModule: React.FC = () => {
             <div>
               <div className="flex items-center space-x-3 text-[10px] font-black text-primary uppercase tracking-widest mb-3">
                 <FileSignature size={14} />
-                <span>Gestão Unaí/MG • Registro de Parcerias</span>
+                <span>Gestão Unaí/MG • {isOSCUser ? 'Minhas Parcerias' : 'Registro de Parcerias'}</span>
               </div>
-              <h2 className="text-3xl md:text-5xl font-black text-foreground tracking-tighter">Instrumentos MROSC</h2>
+              <h2 className="text-3xl md:text-5xl font-black text-foreground tracking-tighter">
+                {isOSCUser ? 'Minhas Parcerias' : 'Instrumentos MROSC'}
+              </h2>
             </div>
-            <button 
-              onClick={() => setShowModal(true)} 
-              className="px-6 md:px-8 py-4 md:py-5 bg-primary text-primary-foreground rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest hover:opacity-90 shadow-2xl shadow-primary/20 flex items-center gap-3 transition-all active:scale-95"
-            >
-              <Plus size={20} /> Nova Parceria
-            </button>
+            {isGestor && (
+              <button 
+                onClick={() => setShowModal(true)} 
+                className="px-6 md:px-8 py-4 md:py-5 bg-primary text-primary-foreground rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest hover:opacity-90 shadow-2xl shadow-primary/20 flex items-center gap-3 transition-all active:scale-95"
+              >
+                <Plus size={20} /> Nova Parceria
+              </button>
+            )}
           </header>
+          
+          {/* Search Bar */}
+          <div className="bg-card p-4 rounded-2xl border border-border">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+              <Input
+                type="text"
+                placeholder="Buscar por razão social, número do termo, status ou valor..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-12 pr-6 py-3 bg-muted border-none rounded-xl text-sm"
+              />
+            </div>
+          </div>
 
           {partnerships.length === 0 ? (
             <div className="text-center py-20 bg-card rounded-[3rem] border border-border">
@@ -213,9 +257,14 @@ const PartnershipsModule: React.FC = () => {
                 Criar Primeira Parceria
               </button>
             </div>
+          ) : filteredPartnerships.length === 0 ? (
+            <div className="text-center py-20 bg-card rounded-[3rem] border border-border">
+              <Search className="mx-auto text-muted-foreground/30 mb-4" size={64} />
+              <p className="text-muted-foreground font-medium">Nenhuma parceria encontrada com os filtros atuais.</p>
+            </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-              {partnerships.map(p => (
+              {filteredPartnerships.map(p => (
                 <div 
                   key={p.id} 
                   onClick={() => { setSelectedPartnership(p); setView('detail'); }} 
@@ -331,13 +380,23 @@ const PartnershipsModule: React.FC = () => {
             </div>
             
             {/* Botão Configurar Plano de Trabalho */}
-            <div className="mt-8 pt-8 border-t border-border">
+            <div className="mt-8 pt-8 border-t border-border space-y-4">
               <button 
                 onClick={() => setView('workplan')}
                 className="w-full py-5 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl hover:opacity-90 transition-all flex items-center justify-center gap-3"
               >
                 <FileText size={20} /> Configurar Plano de Trabalho
               </button>
+              
+              {/* Botão Copiar Link Público (Art. 11) */}
+              {selectedPartnership?.status === 'execucao' || selectedPartnership?.status === 'concluida' ? (
+                <button 
+                  onClick={() => handleCopyPublicLink(selectedPartnership.id)}
+                  className="w-full py-4 bg-info/10 text-info border border-info/20 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-info/20 transition-all flex items-center justify-center gap-3"
+                >
+                  <Copy size={16} /> Copiar Link de Publicidade (Art. 11)
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
