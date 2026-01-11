@@ -12,6 +12,8 @@ import { usePartnerships } from '@/hooks/usePartnerships';
 import { useAuth } from '@/hooks/useAuth';
 import ExportDropdown from '@/components/ui/ExportDropdown';
 import { exportData } from '@/utils/exportUtils';
+import { generatePDFHeader, addPDFFooter } from '@/utils/pdfHeaderUtils';
+import { useTheme } from '@/contexts/ThemeContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { 
@@ -50,6 +52,7 @@ const AdditivesModule: React.FC = () => {
   const { additives, loading, createAdditive, approveAdditive, rejectAdditive, getStatsByType, getValueImpact } = useAdditives();
   const { partnerships } = usePartnerships();
   const { user } = useAuth();
+  const { theme } = useTheme();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<string>('all');
@@ -123,21 +126,26 @@ const AdditivesModule: React.FC = () => {
     if (result) toast.success('Rejeitado');
   };
 
-  const generateConsolidatedDocument = (additive: Additive) => {
+  const generateConsolidatedDocument = async (additive: Additive) => {
     const doc = new jsPDF();
     const partnership = partnerships.find(p => p.id === additive.partnership_id);
     
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text(additive.tipo === 'aditivo' ? 'TERMO ADITIVO' : 'APOSTILAMENTO', 105, 20, { align: 'center' });
-    
-    doc.setFontSize(12);
-    doc.text(`Nº ${additive.numero}`, 105, 28, { align: 'center' });
+    // Generate header with logos
+    const { startY } = await generatePDFHeader({
+      doc,
+      municipalLogoUrl: theme.logoUrl || null,
+      oscLogoUrl: partnership?.osc?.logo_url || null,
+      municipalName: theme.organizationName,
+      municipalSubtitle: theme.organizationSubtitle,
+      oscName: partnership?.osc?.razao_social,
+      title: additive.tipo === 'aditivo' ? 'Termo Aditivo' : 'Apostilamento',
+      subtitle: `Nº ${additive.numero}`,
+    });
     
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     
-    let yPos = 45;
+    let yPos = startY + 4;
     
     doc.text(`TERMO DE PARCERIA: ${partnership?.numero_termo || '-'}`, 14, yPos);
     yPos += 8;
@@ -203,6 +211,7 @@ const AdditivesModule: React.FC = () => {
     }
     
     yPos += 30;
+    doc.setFont('helvetica', 'normal');
     doc.text('_______________________________', 30, yPos);
     doc.text('Gestor Municipal', 50, yPos + 7);
     
@@ -210,8 +219,7 @@ const AdditivesModule: React.FC = () => {
     doc.text('Representante OSC', 135, yPos + 7);
     
     // Footer
-    doc.setFontSize(8);
-    doc.text('Sistema MROSC Digital - Prefeitura Municipal de Unaí/MG', 105, 285, { align: 'center' });
+    addPDFFooter(doc, `Sistema MROSC Digital - ${theme.organizationName}`);
     
     doc.save(`${additive.tipo}-${additive.numero?.replace('/', '-')}.pdf`);
     toast.success('Documento consolidado gerado!');

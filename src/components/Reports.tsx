@@ -13,6 +13,7 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { usePartnerships } from '@/hooks/usePartnerships';
 import { useTheme } from '@/contexts/ThemeContext';
+import { generatePDFHeader, addPDFFooter } from '@/utils/pdfHeaderUtils';
 
 type ExportFormat = 'excel' | 'csv' | 'pdf' | 'doc';
 
@@ -45,30 +46,34 @@ const ReportsModule: React.FC = () => {
   });
 
   // Generate REO PDF
-  const generateREOPDF = () => {
+  const generateREOPDF = async () => {
     const selectedPartnership = partnerships.find(p => p.id === selectedPartnershipId);
     const doc = new jsPDF();
     
-    // Header
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(theme.organizationName.toUpperCase(), doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
-    doc.setFontSize(10);
-    doc.text(theme.organizationSubtitle, doc.internal.pageSize.getWidth() / 2, 26, { align: 'center' });
-    
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('RELATÓRIO DE EXECUÇÃO DO OBJETO - REO', doc.internal.pageSize.getWidth() / 2, 38, { align: 'center' });
+    // Generate header with logos
+    const { startY } = await generatePDFHeader({
+      doc,
+      municipalLogoUrl: theme.logoUrl || null,
+      oscLogoUrl: selectedPartnership?.osc?.logo_url || null,
+      municipalName: theme.organizationName,
+      municipalSubtitle: theme.organizationSubtitle,
+      oscName: selectedPartnership?.osc?.razao_social,
+      title: 'Relatório de Execução do Objeto - REO',
+      subtitle: `Termo: ${selectedPartnership?.numero_termo || 'N/A'}`,
+    });
     
     // Partnership info
+    let currentY = startY + 4;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Termo de Parceria: ${selectedPartnership?.numero_termo || 'N/A'}`, 14, 50);
-    doc.text(`OSC: ${selectedPartnership?.osc?.razao_social || 'N/A'}`, 14, 56);
-    doc.text(`CNPJ: ${selectedPartnership?.osc?.cnpj || 'N/A'}`, 14, 62);
-    doc.text(`Vigência: ${selectedPartnership?.vigencia_inicio || 'N/A'} a ${selectedPartnership?.vigencia_fim || 'N/A'}`, 14, 68);
-    doc.text(`Valor Total: R$ ${selectedPartnership?.valor_repassado?.toLocaleString('pt-BR') || '0,00'}`, 14, 74);
-    doc.text(`Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}`, 14, 80);
+    doc.text(`OSC: ${selectedPartnership?.osc?.razao_social || 'N/A'}`, 14, currentY);
+    doc.text(`CNPJ: ${selectedPartnership?.osc?.cnpj || 'N/A'}`, 120, currentY);
+    currentY += 6;
+    doc.text(`Vigência: ${selectedPartnership?.vigencia_inicio || 'N/A'} a ${selectedPartnership?.vigencia_fim || 'N/A'}`, 14, currentY);
+    doc.text(`Valor Total: R$ ${selectedPartnership?.valor_repassado?.toLocaleString('pt-BR') || '0,00'}`, 120, currentY);
+    currentY += 6;
+    doc.text(`Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}`, 14, currentY);
+    currentY += 10;
     
     // Mock REO data
     const reoData = [
@@ -81,19 +86,14 @@ const ReportsModule: React.FC = () => {
     autoTable(doc, {
       head: [['Meta', 'Descrição', 'Etapa Prevista', 'Etapa Executada', '% Concluído']],
       body: reoData,
-      startY: 90,
+      startY: currentY,
       styles: { fontSize: 9, cellPadding: 4 },
       headStyles: { fillColor: [13, 148, 136], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [240, 253, 250] },
     });
     
     // Footer
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.text(`Página ${i} de ${pageCount} • Sistema MROSC ${theme.organizationName.split(' ').slice(-1)[0]}`, doc.internal.pageSize.getWidth() / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
-    }
+    addPDFFooter(doc, `Sistema MROSC ${theme.organizationName.split(' ').slice(-1)[0]}`);
     
     doc.save(`REO_${selectedPartnership?.numero_termo || 'parceria'}_${new Date().toISOString().split('T')[0]}.pdf`);
     toast.success('REO gerado com sucesso!');
@@ -101,34 +101,37 @@ const ReportsModule: React.FC = () => {
   };
 
   // Generate REFF PDF
-  const generateREFFPDF = () => {
+  const generateREFFPDF = async () => {
     const selectedPartnership = partnerships.find(p => p.id === selectedPartnershipId);
     const doc = new jsPDF();
     
-    // Header
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(theme.organizationName.toUpperCase(), doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
-    doc.setFontSize(10);
-    doc.text(theme.organizationSubtitle, doc.internal.pageSize.getWidth() / 2, 26, { align: 'center' });
-    
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('RELATÓRIO DE EXECUÇÃO FÍSICO-FINANCEIRA - REFF', doc.internal.pageSize.getWidth() / 2, 38, { align: 'center' });
+    // Generate header with logos
+    const { startY } = await generatePDFHeader({
+      doc,
+      municipalLogoUrl: theme.logoUrl || null,
+      oscLogoUrl: selectedPartnership?.osc?.logo_url || null,
+      municipalName: theme.organizationName,
+      municipalSubtitle: theme.organizationSubtitle,
+      oscName: selectedPartnership?.osc?.razao_social,
+      title: 'Relatório de Execução Físico-Financeira - REFF',
+      subtitle: `Termo: ${selectedPartnership?.numero_termo || 'N/A'}`,
+    });
     
     // Partnership info
+    let currentY = startY + 4;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Termo de Parceria: ${selectedPartnership?.numero_termo || 'N/A'}`, 14, 50);
-    doc.text(`OSC: ${selectedPartnership?.osc?.razao_social || 'N/A'}`, 14, 56);
-    doc.text(`CNPJ: ${selectedPartnership?.osc?.cnpj || 'N/A'}`, 14, 62);
-    doc.text(`Valor do Repasse: R$ ${selectedPartnership?.valor_repassado?.toLocaleString('pt-BR') || '0,00'}`, 14, 68);
-    doc.text(`Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}`, 14, 74);
+    doc.text(`OSC: ${selectedPartnership?.osc?.razao_social || 'N/A'}`, 14, currentY);
+    doc.text(`CNPJ: ${selectedPartnership?.osc?.cnpj || 'N/A'}`, 120, currentY);
+    currentY += 6;
+    doc.text(`Valor do Repasse: R$ ${selectedPartnership?.valor_repassado?.toLocaleString('pt-BR') || '0,00'}`, 14, currentY);
+    doc.text(`Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}`, 120, currentY);
+    currentY += 12;
     
     // Receitas
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('RECEITAS', 14, 86);
+    doc.text('RECEITAS', 14, currentY);
     
     const receitasData = [
       ['Repasse Inicial', 'R$ 150.000,00'],
@@ -140,7 +143,7 @@ const ReportsModule: React.FC = () => {
     autoTable(doc, {
       head: [['Descrição', 'Valor']],
       body: receitasData,
-      startY: 90,
+      startY: currentY + 4,
       styles: { fontSize: 9, cellPadding: 4 },
       headStyles: { fillColor: [13, 148, 136], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [240, 253, 250] },
@@ -176,12 +179,7 @@ const ReportsModule: React.FC = () => {
     doc.text('SALDO EM CONTA: R$ 11.250,00', 14, finalY2);
     
     // Footer
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.text(`Página ${i} de ${pageCount} • Sistema MROSC Unaí/MG`, doc.internal.pageSize.getWidth() / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
-    }
+    addPDFFooter(doc, 'Sistema MROSC Unaí/MG');
     
     doc.save(`REFF_${selectedPartnership?.numero_termo || 'parceria'}_${new Date().toISOString().split('T')[0]}.pdf`);
     toast.success('REFF gerado com sucesso!');
