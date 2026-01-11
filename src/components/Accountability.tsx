@@ -231,7 +231,7 @@ const AccountabilityModule: React.FC = () => {
         <div>
           <div className="flex items-center space-x-2 text-[10px] font-black text-primary uppercase tracking-widest mb-3">
             <ClipboardList size={14} />
-            <span>Processamento Integral</span>
+            <span>Processamento Integral </span>
           </div>
           <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tighter">Compliance de Contas</h2>
           <p className="text-muted-foreground font-medium italic">

@@ -513,7 +513,7 @@ const OSCModule: React.FC = () => {
         <div>
           <div className="flex items-center space-x-2 text-[10px] font-black text-primary uppercase tracking-widest mb-3">
             <Users size={14} />
-            <span>Credenciamento Único • Unaí/MG</span>
+            <span>Credenciamento Único • Unaí/MG </span>
           </div>
           <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tighter">Cadastro de OSCs</h2>
           <p className="text-muted-foreground font-medium italic">
