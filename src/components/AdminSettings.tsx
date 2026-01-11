@@ -998,6 +998,18 @@ const AdminSettings: React.FC = () => {
                 <option value="OSC">OSC</option>
               </select>
             </div>
+
+            {/* Alerta de Senha Padrão */}
+            <div className="p-4 bg-warning/10 border border-warning/30 rounded-xl flex items-start gap-3">
+              <AlertCircle size={18} className="text-warning shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-warning">Senha Padrão</p>
+                <p className="text-xs text-warning/80 mt-1">
+                  A senha padrão do novo usuário será definida como <span className="font-mono font-bold">'mudar@123'</span>. O usuário deverá alterá-la no primeiro acesso.
+                </p>
+              </div>
+            </div>
+
             <div className="flex gap-4 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowUserModal(false)} className="flex-1">
                 Cancelar

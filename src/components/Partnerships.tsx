@@ -75,12 +75,16 @@ const PartnershipsModule: React.FC = () => {
     );
   }, [partnerships, searchTerm]);
   
-  // Generate public link for partnership (Art. 11)
-  const handleCopyPublicLink = (partnershipId: string) => {
+  // Generate public link for partnership (Art. 11) - using search param for visibility
+  const handleCopyPublicLink = (partnershipNumeroTermo: string | null) => {
     const baseUrl = window.location.origin;
-    const publicLink = `${baseUrl}/#/transparency/partnership/${partnershipId}`;
+    const searchParam = partnershipNumeroTermo || '';
+    const publicLink = `${baseUrl}/#/transparency?search=${encodeURIComponent(searchParam)}`;
     navigator.clipboard.writeText(publicLink);
-    toast({ title: "Link copiado!", description: "Link público da parceria copiado para a área de transferência." });
+    toast({ 
+      title: "Link copiado!", 
+      description: "Compartilhe em seu site/redes sociais para divulgar a parceria conforme Art. 11 da Lei 13.019/14." 
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -331,6 +335,12 @@ const PartnershipsModule: React.FC = () => {
                 className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-black text-[10px] uppercase shadow-lg flex items-center gap-2 hover:opacity-90 transition-all"
               >
                 <Download size={16} /> Baixar Instrumento
+              </button>
+              <button 
+                onClick={() => handleCopyPublicLink(selectedPartnership?.numero_termo || null)}
+                className="px-6 py-3 bg-muted text-foreground border border-border rounded-xl font-black text-[10px] uppercase flex items-center gap-2 hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-all"
+              >
+                <Copy size={16} /> Copiar Link Público
               </button>
             </div>
           </div>

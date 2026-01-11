@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { ShieldCheck, Mail, Lock, ArrowRight, AlertCircle, Eye } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -144,6 +144,15 @@ const Auth: React.FC = () => {
               A criação de novos usuários é restrita ao Administrador.
             </p>
           </div>
+
+          {/* Botão Acesso Cidadão */}
+          <Link
+            to="/transparency"
+            className="mt-6 w-full py-4 bg-muted/50 text-foreground border border-border rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-primary/10 hover:border-primary/30 hover:text-primary flex items-center justify-center gap-3 transition-all"
+          >
+            <Eye size={18} />
+            Acesso Cidadão (Portal da Transparência)
+          </Link>
         </div>
 
         {/* Footer */}

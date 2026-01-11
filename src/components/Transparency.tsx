@@ -292,12 +292,24 @@ const TransparencyPortal: React.FC = () => {
   const { publicCalls, loading: loadingCalls } = usePublicCalls();
   const { proposals, loading: loadingProposals } = useProposals();
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterYear, setFilterYear] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
   const [selectedPartnership, setSelectedPartnership] = useState<Partnership | null>(null);
   const [selectedEdital, setSelectedEdital] = useState<Chamamento | null>(null);
   const [selectedPublicCall, setSelectedPublicCall] = useState<PublicCall | null>(null);
   const [showOuvidoria, setShowOuvidoria] = useState(false);
   const [ouvidoriaForm, setOuvidoriaForm] = useState({ tipo: 'denuncia', relato: '', anexo: null as File | null });
   const [sendingOuvidoria, setSendingOuvidoria] = useState(false);
+
+  // Available years for filter
+  const availableYears = useMemo(() => {
+    const years = new Set<string>();
+    mockPartnerships.forEach(p => {
+      const year = p.vigencia.split('/')[2]?.split(' ')[0];
+      if (year) years.add(year);
+    });
+    return ['2025', '2024', '2023'].sort((a, b) => parseInt(b) - parseInt(a));
+  }, []);
 
   // Process public calls from database with auto-status calculation
   const processedPublicCalls = useMemo(() => {
@@ -320,17 +332,23 @@ const TransparencyPortal: React.FC = () => {
       .sort((a, b) => (a.ranking || 999) - (b.ranking || 999));
   };
 
-  const filteredPartnerships = mockPartnerships.filter((p) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      p.osc.toLowerCase().includes(term) ||
-      p.cnpj.includes(term) ||
-      p.obj.toLowerCase().includes(term) ||
-      p.type.toLowerCase().includes(term) ||
-      p.responsavel.toLowerCase().includes(term)
-    );
-  });
+  const filteredPartnerships = useMemo(() => {
+    return mockPartnerships.filter((p) => {
+      // Search filter - by osc name, cnpj, object
+      const matchesSearch = !searchTerm || 
+        p.osc.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.cnpj.includes(searchTerm) ||
+        p.obj.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Year filter
+      const matchesYear = !filterYear || p.vigencia.includes(filterYear);
+      
+      // Status filter
+      const matchesStatus = !filterStatus || p.status.toLowerCase().includes(filterStatus.toLowerCase());
+      
+      return matchesSearch && matchesYear && matchesStatus;
+    });
+  }, [searchTerm, filterYear, filterStatus]);
 
   const handleOpenPublicCall = (call: PublicCall) => {
     setSelectedPublicCall(call);
@@ -539,21 +557,51 @@ const TransparencyPortal: React.FC = () => {
             Acesso Restrito
           </Link>
         </div>
-        <div className="max-w-3xl mx-auto text-center">
+        <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-black mb-6 text-primary-foreground">Transparência nas Parcerias</h2>
-          <div className="relative group">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground" size={24} />
-            <input
-              type="text"
-              placeholder="Pesquisar OSC, CNPJ, Objeto ou Responsável..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-16 pr-6 py-5 rounded-3xl text-foreground bg-card shadow-xl border-none outline-none focus:ring-4 focus:ring-primary/20"
-            />
+          
+          {/* Search and Filters */}
+          <div className="space-y-4">
+            <div className="relative group">
+              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground" size={24} />
+              <input
+                type="text"
+                placeholder="Pesquisar por OSC, CNPJ ou Objeto..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-16 pr-6 py-5 rounded-3xl text-foreground bg-card shadow-xl border-none outline-none focus:ring-4 focus:ring-primary/20"
+              />
+            </div>
+            
+            {/* Filter Selects */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <select
+                value={filterYear}
+                onChange={(e) => setFilterYear(e.target.value)}
+                className="px-6 py-3 rounded-2xl text-sm bg-card text-foreground border-none outline-none focus:ring-4 focus:ring-primary/20 cursor-pointer"
+              >
+                <option value="">Todos os Anos</option>
+                {availableYears.map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+              
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-6 py-3 rounded-2xl text-sm bg-card text-foreground border-none outline-none focus:ring-4 focus:ring-primary/20 cursor-pointer"
+              >
+                <option value="">Todos os Status</option>
+                <option value="Aprovada">Aprovada</option>
+                <option value="Em Análise">Em Análise</option>
+                <option value="Ressalvas">Aprovada com Ressalvas</option>
+              </select>
+            </div>
           </div>
-          {searchTerm && (
+          
+          {(searchTerm || filterYear || filterStatus) && (
             <p className="mt-4 text-primary-foreground/80 text-sm">
-              {filteredPartnerships.length} resultado(s) encontrado(s) para "{searchTerm}"
+              {filteredPartnerships.length} resultado(s) encontrado(s)
             </p>
           )}
         </div>
@@ -1194,6 +1242,19 @@ const TransparencyPortal: React.FC = () => {
                   </li>
                 </ul>
               </div>
+
+              {/* Download Edital Button */}
+              {selectedPublicCall.pdf_url && (
+                <a
+                  href={selectedPublicCall.pdf_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-4 bg-success/10 text-success border border-success/30 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-success hover:text-white transition-all"
+                >
+                  <Download size={16} />
+                  Baixar Edital Completo (PDF)
+                </a>
+              )}
 
               <Button 
                 onClick={() => setSelectedPublicCall(null)}
