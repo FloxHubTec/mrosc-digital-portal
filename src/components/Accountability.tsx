@@ -1,17 +1,34 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ClipboardList, Camera, CheckCircle2, XCircle, CreditCard, Plus, Upload, Loader2, X, AlertTriangle, FileText, DollarSign, Image, Trash2, Target, TrendingUp } from 'lucide-react';
-import { useTransactions } from '@/hooks/useTransactions';
-import { usePartnerships } from '@/hooks/usePartnerships';
-import { useWorkPlans, WorkPlanMeta } from '@/hooks/useWorkPlans';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
-import { Progress } from '@/components/ui/progress';
+import React, { useState, useRef, useEffect } from "react";
+import {
+  ClipboardList,
+  Camera,
+  CheckCircle2,
+  XCircle,
+  CreditCard,
+  Plus,
+  Upload,
+  Loader2,
+  X,
+  AlertTriangle,
+  FileText,
+  DollarSign,
+  Image,
+  Trash2,
+  Target,
+  TrendingUp,
+} from "lucide-react";
+import { useTransactions } from "@/hooks/useTransactions";
+import { usePartnerships } from "@/hooks/usePartnerships";
+import { useWorkPlans, WorkPlanMeta } from "@/hooks/useWorkPlans";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
 
 interface EvidenceFile {
   id: string;
   url: string;
   name: string;
-  type: 'antes' | 'durante' | 'depois';
+  type: "antes" | "durante" | "depois";
 }
 
 interface MetaProgress {
@@ -20,62 +37,61 @@ interface MetaProgress {
 }
 
 const AccountabilityModule: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'REO' | 'REFF'>('REO');
-  const [selectedPartnershipId, setSelectedPartnershipId] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<"REO" | "REFF">("REO");
+  const [selectedPartnershipId, setSelectedPartnershipId] = useState<string>("");
   const { partnerships, loading: loadingPartnerships } = usePartnerships();
-  const { transactions, loading, totals, createTransaction, approveTransaction, rejectTransaction, refetch } = useTransactions(selectedPartnershipId || undefined);
+  const { transactions, loading, totals, createTransaction, approveTransaction, rejectTransaction, refetch } =
+    useTransactions(selectedPartnershipId || undefined);
   const { workPlan, loading: loadingWorkPlan } = useWorkPlans(selectedPartnershipId || undefined);
-  
+
   const [showModal, setShowModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
+  const [rejectReason, setRejectReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const evidenceInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [formData, setFormData] = useState({
-    data_transacao: '',
-    valor: '',
-    tipo: 'despesa',
-    categoria: '',
-    fornecedor: '',
+    data_transacao: "",
+    valor: "",
+    tipo: "despesa",
+    categoria: "",
+    fornecedor: "",
   });
   const [uploadedFile, setUploadedFile] = useState<{ url: string; name: string } | null>(null);
-  
+
   // Evidence files state
   const [evidenceFiles, setEvidenceFiles] = useState<EvidenceFile[]>([]);
-  const [currentEvidenceType, setCurrentEvidenceType] = useState<'antes' | 'durante' | 'depois'>('antes');
-  
+  const [currentEvidenceType, setCurrentEvidenceType] = useState<"antes" | "durante" | "depois">("antes");
+
   // Meta progress state (simulated - in production would come from DB)
   const [metaProgress, setMetaProgress] = useState<MetaProgress[]>([]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     setUploading(true);
-    
-    const fileExt = file.name.split('.').pop();
+
+    const fileExt = file.name.split(".").pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     const filePath = `comprovantes/${fileName}`;
-    
-    const { error } = await supabase.storage
-      .from('documents')
-      .upload(filePath, file);
-    
+
+    const { error } = await supabase.storage.from("documents").upload(filePath, file);
+
     if (error) {
-      console.error('Error uploading file:', error);
+      console.error("Error uploading file:", error);
       setUploading(false);
       return;
     }
-    
-    const { data: { publicUrl } } = supabase.storage
-      .from('documents')
-      .getPublicUrl(filePath);
-    
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("documents").getPublicUrl(filePath);
+
     setUploadedFile({ url: publicUrl, name: file.name });
     setUploading(false);
   };
@@ -83,72 +99,73 @@ const AccountabilityModule: React.FC = () => {
   const handleEvidenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !selectedPartnershipId) return;
-    
+
     // Check if we already have 3 evidences of this type
-    const existingOfType = evidenceFiles.filter(f => f.type === currentEvidenceType);
+    const existingOfType = evidenceFiles.filter((f) => f.type === currentEvidenceType);
     if (existingOfType.length >= 1) {
-      toast({ 
-        title: "Limite atingido", 
+      toast({
+        title: "Limite atingido",
         description: `Já existe uma evidência do tipo "${currentEvidenceType}". Remova a existente primeiro.`,
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
-    
+
     setUploadingEvidence(true);
-    
-    const fileExt = file.name.split('.').pop();
+
+    const fileExt = file.name.split(".").pop();
     const fileName = `${selectedPartnershipId}/${currentEvidenceType}-${Date.now()}.${fileExt}`;
     const filePath = `evidencias/${fileName}`;
-    
-    const { error } = await supabase.storage
-      .from('documents')
-      .upload(filePath, file);
-    
+
+    const { error } = await supabase.storage.from("documents").upload(filePath, file);
+
     if (error) {
-      console.error('Error uploading evidence:', error);
+      console.error("Error uploading evidence:", error);
       toast({ title: "Erro no upload", description: error.message, variant: "destructive" });
       setUploadingEvidence(false);
       return;
     }
-    
-    const { data: { publicUrl } } = supabase.storage
-      .from('documents')
-      .getPublicUrl(filePath);
-    
-    setEvidenceFiles(prev => [...prev, {
-      id: `${Date.now()}`,
-      url: publicUrl,
-      name: file.name,
-      type: currentEvidenceType
-    }]);
-    
-    toast({ 
-      title: "Evidência enviada!", 
-      description: `Foto "${currentEvidenceType}" salva com sucesso.` 
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("documents").getPublicUrl(filePath);
+
+    setEvidenceFiles((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}`,
+        url: publicUrl,
+        name: file.name,
+        type: currentEvidenceType,
+      },
+    ]);
+
+    toast({
+      title: "Evidência enviada!",
+      description: `Foto "${currentEvidenceType}" salva com sucesso.`,
     });
-    
+
     setUploadingEvidence(false);
-    if (evidenceInputRef.current) evidenceInputRef.current.value = '';
+    if (evidenceInputRef.current) evidenceInputRef.current.value = "";
   };
 
   const removeEvidence = (id: string) => {
-    setEvidenceFiles(prev => prev.filter(f => f.id !== id));
+    setEvidenceFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
   const getEvidenceCount = () => {
-    const antes = evidenceFiles.filter(f => f.type === 'antes').length;
-    const durante = evidenceFiles.filter(f => f.type === 'durante').length;
-    const depois = evidenceFiles.filter(f => f.type === 'depois').length;
+    const antes = evidenceFiles.filter((f) => f.type === "antes").length;
+    const durante = evidenceFiles.filter((f) => f.type === "durante").length;
+    const depois = evidenceFiles.filter((f) => f.type === "depois").length;
     return { antes, durante, depois, total: antes + durante + depois };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPartnershipId || !uploadedFile) return;
-    
+
     setSaving(true);
-    
+
     await createTransaction({
       partnership_id: selectedPartnershipId,
       data_transacao: formData.data_transacao,
@@ -157,11 +174,11 @@ const AccountabilityModule: React.FC = () => {
       categoria: formData.categoria || null,
       fornecedor: formData.fornecedor || null,
       url_comprovante: uploadedFile.url,
-      status_conciliacao: 'pendente',
+      status_conciliacao: "pendente",
       justificativa_glosa: null,
     });
-    
-    setFormData({ data_transacao: '', valor: '', tipo: 'despesa', categoria: '', fornecedor: '' });
+
+    setFormData({ data_transacao: "", valor: "", tipo: "despesa", categoria: "", fornecedor: "" });
     setUploadedFile(null);
     setShowModal(false);
     setSaving(false);
@@ -175,25 +192,29 @@ const AccountabilityModule: React.FC = () => {
     if (!showRejectModal || !rejectReason) return;
     await rejectTransaction(showRejectModal, rejectReason);
     setShowRejectModal(null);
-    setRejectReason('');
+    setRejectReason("");
   };
 
   const getStatusStyle = (status: string | null) => {
     switch (status) {
-      case 'aprovado': return 'bg-success/10 text-success';
-      case 'glosado': return 'bg-destructive/10 text-destructive';
-      case 'pendente': return 'bg-warning/10 text-warning';
-      default: return 'bg-muted text-muted-foreground';
+      case "aprovado":
+        return "bg-success/10 text-success";
+      case "glosado":
+        return "bg-destructive/10 text-destructive";
+      case "pendente":
+        return "bg-warning/10 text-warning";
+      default:
+        return "bg-muted text-muted-foreground";
     }
   };
 
   const categorias = [
-    'Recursos Humanos',
-    'Custeio',
-    'Material de Consumo',
-    'Serviços de Terceiros',
-    'Equipamentos',
-    'Outros',
+    "Recursos Humanos",
+    "Custeio",
+    "Material de Consumo",
+    "Serviços de Terceiros",
+    "Equipamentos",
+    "Outros",
   ];
 
   if (loadingPartnerships) {
@@ -210,15 +231,17 @@ const AccountabilityModule: React.FC = () => {
         <div>
           <div className="flex items-center space-x-2 text-[10px] font-black text-primary uppercase tracking-widest mb-3">
             <ClipboardList size={14} />
-            <span>Processamento Integral POC Item 33</span>
+            <span>Processamento Integral</span>
           </div>
           <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tighter">Compliance de Contas</h2>
-          <p className="text-muted-foreground font-medium italic">Monitoramento eletrônico de Objeto e Financeiro (REO/REFF).</p>
+          <p className="text-muted-foreground font-medium italic">
+            Monitoramento eletrônico de Objeto e Financeiro (REO/REFF).
+          </p>
         </div>
-        
+
         {selectedPartnershipId && (
           <div className="flex flex-wrap gap-4">
-            <button 
+            <button
               onClick={() => setShowModal(true)}
               className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 shadow-xl flex items-center space-x-2 transition-all active:scale-95"
             >
@@ -240,9 +263,9 @@ const AccountabilityModule: React.FC = () => {
           className="w-full md:w-96 px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20 appearance-none cursor-pointer"
         >
           <option value="">Selecione uma parceria...</option>
-          {partnerships.map(p => (
+          {partnerships.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.osc?.razao_social} - {p.numero_termo || 'Sem número'}
+              {p.osc?.razao_social} - {p.numero_termo || "Sem número"}
             </option>
           ))}
         </select>
@@ -256,7 +279,7 @@ const AccountabilityModule: React.FC = () => {
               <div>
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Total Receitas</p>
                 <h4 className="text-xl font-black text-success">
-                  R$ {totals.receitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {totals.receitas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </h4>
               </div>
               <div className="p-3 bg-success/10 text-success rounded-2xl">
@@ -267,7 +290,7 @@ const AccountabilityModule: React.FC = () => {
               <div>
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Total Despesas</p>
                 <h4 className="text-xl font-black text-destructive">
-                  R$ {totals.despesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {totals.despesas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </h4>
               </div>
               <div className="p-3 bg-destructive/10 text-destructive rounded-2xl">
@@ -277,11 +300,13 @@ const AccountabilityModule: React.FC = () => {
             <div className="bg-card p-6 rounded-3xl border border-border flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Saldo</p>
-                <h4 className={`text-xl font-black ${totals.saldo >= 0 ? 'text-success' : 'text-destructive'}`}>
-                  R$ {totals.saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                <h4 className={`text-xl font-black ${totals.saldo >= 0 ? "text-success" : "text-destructive"}`}>
+                  R$ {totals.saldo.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </h4>
               </div>
-              <div className={`p-3 rounded-2xl ${totals.saldo >= 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+              <div
+                className={`p-3 rounded-2xl ${totals.saldo >= 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}
+              >
                 <CreditCard size={20} />
               </div>
             </div>
@@ -289,22 +314,22 @@ const AccountabilityModule: React.FC = () => {
 
           {/* Tabs */}
           <div className="flex bg-card p-2 rounded-3xl shadow-sm border border-border w-fit">
-            <button 
-              onClick={() => setActiveTab('REO')}
-              className={`px-6 md:px-8 py-3 md:py-4 rounded-2xl text-xs font-black uppercase transition-all ${activeTab === 'REO' ? 'bg-primary text-primary-foreground shadow-xl' : 'text-muted-foreground hover:text-primary'}`}
+            <button
+              onClick={() => setActiveTab("REO")}
+              className={`px-6 md:px-8 py-3 md:py-4 rounded-2xl text-xs font-black uppercase transition-all ${activeTab === "REO" ? "bg-primary text-primary-foreground shadow-xl" : "text-muted-foreground hover:text-primary"}`}
             >
               REO (Execução Objeto)
             </button>
-            <button 
-              onClick={() => setActiveTab('REFF')}
-              className={`px-6 md:px-8 py-3 md:py-4 rounded-2xl text-xs font-black uppercase transition-all ${activeTab === 'REFF' ? 'bg-primary text-primary-foreground shadow-xl' : 'text-muted-foreground hover:text-primary'}`}
+            <button
+              onClick={() => setActiveTab("REFF")}
+              className={`px-6 md:px-8 py-3 md:py-4 rounded-2xl text-xs font-black uppercase transition-all ${activeTab === "REFF" ? "bg-primary text-primary-foreground shadow-xl" : "text-muted-foreground hover:text-primary"}`}
             >
               REFF (Financeiro)
             </button>
           </div>
 
           <div className="bg-card rounded-[2.5rem] md:rounded-[4rem] shadow-2xl border border-border overflow-hidden">
-            {activeTab === 'REO' ? (
+            {activeTab === "REO" ? (
               <div className="p-8 md:p-12 space-y-8 md:space-y-12">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
                   <div className="p-8 md:p-10 border-2 border-dashed border-border rounded-[2rem] md:rounded-[3rem] bg-muted/50 flex flex-col items-center text-center">
@@ -315,33 +340,33 @@ const AccountabilityModule: React.FC = () => {
                     <p className="text-xs text-muted-foreground font-medium mb-4">
                       Obrigatório: 3 fotos (antes, durante e depois)
                     </p>
-                    
+
                     {/* Evidence status */}
                     <div className="flex gap-2 mb-6">
-                      {['antes', 'durante', 'depois'].map((type) => {
-                        const hasEvidence = evidenceFiles.some(f => f.type === type);
+                      {["antes", "durante", "depois"].map((type) => {
+                        const hasEvidence = evidenceFiles.some((f) => f.type === type);
                         return (
-                          <span 
+                          <span
                             key={type}
                             className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase ${
-                              hasEvidence 
-                                ? 'bg-success/10 text-success border border-success/20' 
-                                : 'bg-muted text-muted-foreground border border-border'
+                              hasEvidence
+                                ? "bg-success/10 text-success border border-success/20"
+                                : "bg-muted text-muted-foreground border border-border"
                             }`}
                           >
-                            {type} {hasEvidence && '✓'}
+                            {type} {hasEvidence && "✓"}
                           </span>
                         );
                       })}
                     </div>
-                    
-                    <button 
+
+                    <button
                       onClick={() => setShowEvidenceModal(true)}
                       className="px-6 md:px-8 py-3 md:py-4 bg-primary text-primary-foreground rounded-2xl font-black text-[10px] uppercase hover:opacity-90 transition-all flex items-center gap-2"
                     >
                       <Upload size={16} /> Upload de Arquivos
                     </button>
-                    
+
                     {getEvidenceCount().total > 0 && (
                       <p className="text-xs text-success font-bold mt-4">
                         {getEvidenceCount().total}/3 evidências enviadas
@@ -353,21 +378,23 @@ const AccountabilityModule: React.FC = () => {
                       <Target size={20} className="text-primary" />
                       Metas da Parceria
                     </h4>
-                    
+
                     {loadingWorkPlan ? (
                       <div className="flex items-center justify-center py-8">
                         <Loader2 className="w-6 h-6 animate-spin text-primary" />
                       </div>
-                    ) : !workPlan || workPlan.status !== 'aprovado' ? (
+                    ) : !workPlan || workPlan.status !== "aprovado" ? (
                       <div className="text-center py-8 text-muted-foreground border-2 border-dashed border-border rounded-2xl">
                         <FileText className="mx-auto mb-3 opacity-30" size={40} />
                         <p className="text-sm font-medium">
-                          {workPlan ? `Plano de Trabalho em status: ${workPlan.status}` : 'Nenhum Plano de Trabalho configurado'}
+                          {workPlan
+                            ? `Plano de Trabalho em status: ${workPlan.status}`
+                            : "Nenhum Plano de Trabalho configurado"}
                         </p>
                         <p className="text-xs mt-2">
-                          {workPlan?.status === 'enviado' 
-                            ? 'Aguardando aprovação do gestor.' 
-                            : 'Configure em: Parcerias → Selecionar Parceria → Plano de Trabalho'}
+                          {workPlan?.status === "enviado"
+                            ? "Aguardando aprovação do gestor."
+                            : "Configure em: Parcerias → Selecionar Parceria → Plano de Trabalho"}
                         </p>
                       </div>
                     ) : (
@@ -376,52 +403,58 @@ const AccountabilityModule: React.FC = () => {
                           <p className="text-muted-foreground text-sm">Nenhuma meta definida no plano.</p>
                         ) : (
                           workPlan.metas.map((meta, idx) => {
-                            const progress = metaProgress.find(p => p.metaId === meta.id);
+                            const progress = metaProgress.find((p) => p.metaId === meta.id);
                             const executado = progress?.executado || 0;
-                            const percentual = meta.meta_quantidade > 0 
-                              ? Math.min((executado / meta.meta_quantidade) * 100, 100) 
-                              : 0;
-                            
+                            const percentual =
+                              meta.meta_quantidade > 0 ? Math.min((executado / meta.meta_quantidade) * 100, 100) : 0;
+
                             return (
-                              <div 
-                                key={meta.id} 
+                              <div
+                                key={meta.id}
                                 className="p-4 bg-muted rounded-2xl border border-border hover:border-primary/30 transition-all"
                               >
                                 <div className="flex items-start gap-3 mb-3">
                                   <div className="w-8 h-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center font-black text-xs shrink-0">
-                                    {String(idx + 1).padStart(2, '0')}
+                                    {String(idx + 1).padStart(2, "0")}
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <h5 className="font-bold text-foreground text-sm leading-tight">
-                                      {meta.descricao || 'Meta sem descrição'}
+                                      {meta.descricao || "Meta sem descrição"}
                                     </h5>
                                     <p className="text-[10px] text-muted-foreground mt-1">
-                                      Indicador: {meta.indicador || 'N/A'}
+                                      Indicador: {meta.indicador || "N/A"}
                                     </p>
                                   </div>
                                 </div>
-                                
+
                                 <div className="space-y-2">
                                   <div className="flex justify-between text-xs">
                                     <span className="text-muted-foreground">
                                       Progresso: {executado}/{meta.meta_quantidade}
                                     </span>
-                                    <span className={`font-bold ${percentual >= 100 ? 'text-success' : percentual >= 50 ? 'text-warning' : 'text-muted-foreground'}`}>
+                                    <span
+                                      className={`font-bold ${percentual >= 100 ? "text-success" : percentual >= 50 ? "text-warning" : "text-muted-foreground"}`}
+                                    >
                                       {percentual.toFixed(0)}%
                                     </span>
                                   </div>
                                   <Progress value={percentual} className="h-2" />
-                                  
+
                                   <div className="flex justify-between text-[10px] text-muted-foreground mt-2">
                                     <span>
-                                      Valor Unit: R$ {(meta.valor_unitario || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                      Valor Unit: R${" "}
+                                      {(meta.valor_unitario || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                                     </span>
                                     <span className="font-bold text-foreground">
-                                      Total: R$ {((meta.meta_quantidade || 0) * (meta.valor_unitario || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                      Total: R${" "}
+                                      {((meta.meta_quantidade || 0) * (meta.valor_unitario || 0)).toLocaleString(
+                                        "pt-BR",
+                                        { minimumFractionDigits: 2 },
+                                      )}
                                     </span>
                                   </div>
                                 </div>
-                                
+
                                 {/* Input to update progress */}
                                 <div className="mt-3 flex items-center gap-2">
                                   <input
@@ -431,10 +464,12 @@ const AccountabilityModule: React.FC = () => {
                                     value={executado}
                                     onChange={(e) => {
                                       const value = Math.min(parseInt(e.target.value) || 0, meta.meta_quantidade);
-                                      setMetaProgress(prev => {
-                                        const exists = prev.find(p => p.metaId === meta.id);
+                                      setMetaProgress((prev) => {
+                                        const exists = prev.find((p) => p.metaId === meta.id);
                                         if (exists) {
-                                          return prev.map(p => p.metaId === meta.id ? { ...p, executado: value } : p);
+                                          return prev.map((p) =>
+                                            p.metaId === meta.id ? { ...p, executado: value } : p,
+                                          );
                                         }
                                         return [...prev, { metaId: meta.id, executado: value }];
                                       });
@@ -443,15 +478,13 @@ const AccountabilityModule: React.FC = () => {
                                     placeholder="Qtd"
                                   />
                                   <span className="text-[10px] text-muted-foreground">executado</span>
-                                  {percentual >= 100 && (
-                                    <CheckCircle2 className="text-success ml-auto" size={16} />
-                                  )}
+                                  {percentual >= 100 && <CheckCircle2 className="text-success ml-auto" size={16} />}
                                 </div>
                               </div>
                             );
                           })
                         )}
-                        
+
                         {/* Summary */}
                         {workPlan.metas.length > 0 && (
                           <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20">
@@ -463,19 +496,25 @@ const AccountabilityModule: React.FC = () => {
                               <div>
                                 <p className="text-muted-foreground">Metas Concluídas</p>
                                 <p className="font-black text-foreground">
-                                  {workPlan.metas.filter(m => {
-                                    const p = metaProgress.find(mp => mp.metaId === m.id);
-                                    return p && p.executado >= m.meta_quantidade;
-                                  }).length} / {workPlan.metas.length}
+                                  {
+                                    workPlan.metas.filter((m) => {
+                                      const p = metaProgress.find((mp) => mp.metaId === m.id);
+                                      return p && p.executado >= m.meta_quantidade;
+                                    }).length
+                                  }{" "}
+                                  / {workPlan.metas.length}
                                 </p>
                               </div>
                               <div>
                                 <p className="text-muted-foreground">Valor Executado</p>
                                 <p className="font-black text-foreground">
-                                  R$ {workPlan.metas.reduce((sum, m) => {
-                                    const p = metaProgress.find(mp => mp.metaId === m.id);
-                                    return sum + ((p?.executado || 0) * (m.valor_unitario || 0));
-                                  }, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                  R${" "}
+                                  {workPlan.metas
+                                    .reduce((sum, m) => {
+                                      const p = metaProgress.find((mp) => mp.metaId === m.id);
+                                      return sum + (p?.executado || 0) * (m.valor_unitario || 0);
+                                    }, 0)
+                                    .toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                                 </p>
                               </div>
                             </div>
@@ -512,43 +551,54 @@ const AccountabilityModule: React.FC = () => {
                       {transactions.map((t) => (
                         <tr key={t.id} className="hover:bg-muted transition-colors">
                           <td className="px-6 md:px-8 py-6 md:py-8">
-                            <div className="font-black text-foreground">{t.fornecedor || 'Sem descrição'}</div>
+                            <div className="font-black text-foreground">{t.fornecedor || "Sem descrição"}</div>
                             <div className="text-[10px] font-bold text-muted-foreground">
-                              {new Date(t.data_transacao).toLocaleDateString('pt-BR')}
+                              {new Date(t.data_transacao).toLocaleDateString("pt-BR")}
                             </div>
                           </td>
                           <td className="px-6 md:px-8 py-6 md:py-8">
                             <span className="px-3 py-1 bg-muted text-muted-foreground rounded-lg text-[9px] font-black uppercase">
-                              {t.categoria || 'N/A'}
+                              {t.categoria || "N/A"}
                             </span>
                           </td>
                           <td className="px-6 md:px-8 py-6 md:py-8">
-                            <span className={`font-black ${t.tipo === 'receita' ? 'text-success' : 'text-destructive'}`}>
-                              {t.tipo === 'receita' ? '+' : '-'} R$ {t.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            <span
+                              className={`font-black ${t.tipo === "receita" ? "text-success" : "text-destructive"}`}
+                            >
+                              {t.tipo === "receita" ? "+" : "-"} R${" "}
+                              {t.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                             </span>
                           </td>
                           <td className="px-6 md:px-8 py-6 md:py-8">
-                            <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase ${getStatusStyle(t.status_conciliacao)}`}>
-                              {t.status_conciliacao === 'aprovado' ? 'Aprovado' : 
-                               t.status_conciliacao === 'glosado' ? 'Glosado' : 'Pendente'}
+                            <span
+                              className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase ${getStatusStyle(t.status_conciliacao)}`}
+                            >
+                              {t.status_conciliacao === "aprovado"
+                                ? "Aprovado"
+                                : t.status_conciliacao === "glosado"
+                                  ? "Glosado"
+                                  : "Pendente"}
                             </span>
                             {t.justificativa_glosa && (
-                              <p className="text-[10px] text-muted-foreground mt-1 max-w-[150px] truncate" title={t.justificativa_glosa}>
+                              <p
+                                className="text-[10px] text-muted-foreground mt-1 max-w-[150px] truncate"
+                                title={t.justificativa_glosa}
+                              >
                                 {t.justificativa_glosa}
                               </p>
                             )}
                           </td>
                           <td className="px-6 md:px-8 py-6 md:py-8 text-right">
-                            {t.status_conciliacao === 'pendente' && (
+                            {t.status_conciliacao === "pendente" && (
                               <div className="flex justify-end gap-2">
-                                <button 
+                                <button
                                   onClick={() => setShowRejectModal(t.id)}
-                                  className="p-3 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive hover:text-destructive-foreground transition-all" 
+                                  className="p-3 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive hover:text-destructive-foreground transition-all"
                                   title="Glosar Despesa"
                                 >
                                   <XCircle size={18} />
                                 </button>
-                                <button 
+                                <button
                                   onClick={() => handleApprove(t.id)}
                                   className="p-3 bg-success/10 text-success rounded-xl hover:bg-success hover:text-success-foreground transition-all"
                                   title="Aprovar"
@@ -572,7 +622,9 @@ const AccountabilityModule: React.FC = () => {
       {!selectedPartnershipId && (
         <div className="text-center py-20 bg-card rounded-[3rem] border border-border">
           <ClipboardList className="mx-auto text-muted-foreground/30 mb-4" size={64} />
-          <p className="text-muted-foreground font-medium">Selecione uma parceria para visualizar as prestações de contas.</p>
+          <p className="text-muted-foreground font-medium">
+            Selecione uma parceria para visualizar as prestações de contas.
+          </p>
         </div>
       )}
 
@@ -641,8 +693,10 @@ const AccountabilityModule: React.FC = () => {
                   className="w-full px-4 py-4 bg-muted rounded-2xl text-sm outline-none focus:ring-4 focus:ring-primary/20 appearance-none cursor-pointer"
                 >
                   <option value="">Selecione...</option>
-                  {categorias.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
+                  {categorias.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -675,7 +729,7 @@ const AccountabilityModule: React.FC = () => {
                   <div className="flex items-center gap-3 p-4 bg-success/10 rounded-2xl border border-success/20">
                     <CheckCircle2 className="text-success" size={20} />
                     <span className="text-sm font-medium text-foreground flex-1 truncate">{uploadedFile.name}</span>
-                    <button 
+                    <button
                       type="button"
                       onClick={() => setUploadedFile(null)}
                       className="text-muted-foreground hover:text-destructive"
@@ -696,7 +750,7 @@ const AccountabilityModule: React.FC = () => {
                       <Upload className="text-muted-foreground" size={24} />
                     )}
                     <span className="text-xs text-muted-foreground">
-                      {uploading ? 'Enviando...' : 'Clique para enviar PDF, JPG ou PNG'}
+                      {uploading ? "Enviando..." : "Clique para enviar PDF, JPG ou PNG"}
                     </span>
                   </button>
                 )}
@@ -716,7 +770,7 @@ const AccountabilityModule: React.FC = () => {
                   className="flex-1 py-4 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                 >
                   {saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                  {saving ? 'Salvando...' : 'Registrar'}
+                  {saving ? "Salvando..." : "Registrar"}
                 </button>
               </div>
             </form>
@@ -733,7 +787,10 @@ const AccountabilityModule: React.FC = () => {
                 <AlertTriangle className="text-warning" size={20} />
                 Glosar Despesa
               </h3>
-              <button onClick={() => setShowRejectModal(null)} className="p-2 hover:bg-muted rounded-xl transition-colors">
+              <button
+                onClick={() => setShowRejectModal(null)}
+                className="p-2 hover:bg-muted rounded-xl transition-colors"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -779,13 +836,17 @@ const AccountabilityModule: React.FC = () => {
                 <Camera className="text-primary" size={20} />
                 Upload de Evidências
               </h3>
-              <button onClick={() => setShowEvidenceModal(false)} className="p-2 hover:bg-muted rounded-xl transition-colors">
+              <button
+                onClick={() => setShowEvidenceModal(false)}
+                className="p-2 hover:bg-muted rounded-xl transition-colors"
+              >
                 <X size={20} />
               </button>
             </div>
 
             <p className="text-sm text-muted-foreground mb-6">
-              Envie 3 fotos obrigatórias: <strong>antes</strong>, <strong>durante</strong> e <strong>depois</strong> da execução da atividade.
+              Envie 3 fotos obrigatórias: <strong>antes</strong>, <strong>durante</strong> e <strong>depois</strong> da
+              execução da atividade.
             </p>
 
             {/* Select evidence type */}
@@ -794,22 +855,22 @@ const AccountabilityModule: React.FC = () => {
                 Tipo de Evidência
               </label>
               <div className="flex gap-3">
-                {(['antes', 'durante', 'depois'] as const).map((type) => {
-                  const hasEvidence = evidenceFiles.some(f => f.type === type);
+                {(["antes", "durante", "depois"] as const).map((type) => {
+                  const hasEvidence = evidenceFiles.some((f) => f.type === type);
                   return (
                     <button
                       key={type}
                       onClick={() => setCurrentEvidenceType(type)}
                       disabled={hasEvidence}
                       className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase transition-all ${
-                        currentEvidenceType === type 
-                          ? 'bg-primary text-primary-foreground shadow-lg' 
+                        currentEvidenceType === type
+                          ? "bg-primary text-primary-foreground shadow-lg"
                           : hasEvidence
-                            ? 'bg-success/10 text-success border border-success/20 cursor-not-allowed'
-                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                            ? "bg-success/10 text-success border border-success/20 cursor-not-allowed"
+                            : "bg-muted text-muted-foreground hover:bg-muted/80"
                       }`}
                     >
-                      {type} {hasEvidence && '✓'}
+                      {type} {hasEvidence && "✓"}
                     </button>
                   );
                 })}
@@ -826,17 +887,14 @@ const AccountabilityModule: React.FC = () => {
                 className="hidden"
                 id="evidence-upload"
               />
-              <label 
-                htmlFor="evidence-upload" 
-                className="cursor-pointer flex flex-col items-center"
-              >
+              <label htmlFor="evidence-upload" className="cursor-pointer flex flex-col items-center">
                 {uploadingEvidence ? (
                   <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
                 ) : (
                   <Image className="w-12 h-12 text-muted-foreground mb-4" />
                 )}
                 <p className="text-sm font-bold text-foreground mb-2">
-                  {uploadingEvidence ? 'Enviando...' : `Clique para enviar foto "${currentEvidenceType}"`}
+                  {uploadingEvidence ? "Enviando..." : `Clique para enviar foto "${currentEvidenceType}"`}
                 </p>
                 <p className="text-xs text-muted-foreground">JPG, PNG ou WEBP (máx 5MB)</p>
               </label>
@@ -849,8 +907,8 @@ const AccountabilityModule: React.FC = () => {
                 <div className="grid grid-cols-3 gap-4">
                   {evidenceFiles.map((file) => (
                     <div key={file.id} className="relative group">
-                      <img 
-                        src={file.url} 
+                      <img
+                        src={file.url}
                         alt={file.name}
                         className="w-full h-24 object-cover rounded-xl border border-border"
                       />
@@ -879,7 +937,10 @@ const AccountabilityModule: React.FC = () => {
               {getEvidenceCount().total === 3 && (
                 <button
                   onClick={() => {
-                    toast({ title: "Evidências salvas!", description: "Todas as 3 fotos obrigatórias foram enviadas." });
+                    toast({
+                      title: "Evidências salvas!",
+                      description: "Todas as 3 fotos obrigatórias foram enviadas.",
+                    });
                     setShowEvidenceModal(false);
                   }}
                   className="flex-1 py-4 bg-success text-success-foreground rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2"
