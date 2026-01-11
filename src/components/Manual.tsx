@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import { useAuth } from '@/hooks/useAuth';
-import { UserRole } from '@/types';
 
 interface ManualTopic {
   id: string;
@@ -22,8 +21,8 @@ interface ManualTopic {
 const ManualModule: React.FC = () => {
   const { profile } = useAuth();
   
-  // Check if user is OSC
-  const isOSC = profile?.role === UserRole.OSC_LEGAL || profile?.role === UserRole.OSC_USER;
+  // Check if user can edit manual (only admin_master)
+  const canEditManual = profile?.role === 'admin_master' || profile?.role === 'superadmin';
   
   const [selectedTopic, setSelectedTopic] = useState<ManualTopic | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -253,8 +252,8 @@ const ManualModule: React.FC = () => {
           <p className="text-muted-foreground font-medium">Instruções de uso editáveis pelo Administrador Master.</p>
         </div>
         <div className="flex gap-3">
-          {/* Botão Editar Manual - OCULTO para OSC */}
-          {!isOSC && (
+          {/* Botão Editar Manual - Apenas Admin Master */}
+          {canEditManual && (
             <Button 
               variant="outline" 
               onClick={handleEditManual}

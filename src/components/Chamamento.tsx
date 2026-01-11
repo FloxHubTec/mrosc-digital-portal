@@ -421,20 +421,35 @@ const ChamamentoModule: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={handleOpenPortalPublico}
-                  className="flex-1 py-4 bg-muted text-foreground rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-muted/80"
-                >
-                  <ExternalLink size={16} />
-                  Ver no Portal Público
-                </button>
-                <button
-                  onClick={() => setShowDetailModal(false)}
-                  className="flex-1 py-4 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90"
-                >
-                  Fechar
-                </button>
+              <div className="flex flex-col gap-3 pt-4">
+                {/* Botão Download Edital */}
+                {selectedCall.pdf_url && (
+                  <a
+                    href={selectedCall.pdf_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-4 bg-success/10 text-success border border-success/30 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-success hover:text-success-foreground transition-all"
+                  >
+                    <FileText size={16} />
+                    Baixar Edital Completo (PDF)
+                  </a>
+                )}
+                
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleOpenPortalPublico}
+                    className="flex-1 py-4 bg-muted text-foreground rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-muted/80"
+                  >
+                    <ExternalLink size={16} />
+                    Ver no Portal Público
+                  </button>
+                  <button
+                    onClick={() => setShowDetailModal(false)}
+                    className="flex-1 py-4 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90"
+                  >
+                    Fechar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
