@@ -22,6 +22,7 @@ import { usePartnerships } from "@/hooks/usePartnerships";
 import { useWorkPlans, WorkPlanMeta } from "@/hooks/useWorkPlans";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Progress } from "@/components/ui/progress";
 
 interface EvidenceFile {
@@ -39,11 +40,16 @@ interface MetaProgress {
 const AccountabilityModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"REO" | "REFF">("REO");
   const [selectedPartnershipId, setSelectedPartnershipId] = useState<string>("");
-  const { partnerships, loading: loadingPartnerships } = usePartnerships();
+  const { profile } = useAuth();
+  
+  // Check if user is OSC type
+  const isOSCUser = profile?.role === 'osc_user' || profile?.role === 'Usuário OSC' || profile?.role === 'Representante Legal OSC';
+  
+  // For OSC users, filter partnerships by their osc_id
+  const { partnerships, loading: loadingPartnerships } = usePartnerships(isOSCUser);
   const { transactions, loading, totals, createTransaction, approveTransaction, rejectTransaction, refetch } =
     useTransactions(selectedPartnershipId || undefined);
   const { workPlan, loading: loadingWorkPlan } = useWorkPlans(selectedPartnershipId || undefined);
-
   const [showModal, setShowModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
@@ -252,10 +258,10 @@ const AccountabilityModule: React.FC = () => {
         )}
       </header>
 
-      {/* Seletor de Parceria */}
+      {/* Seletor de Parceria - Hidden for OSC users with single partnership, simplified for OSC */}
       <div className="bg-card p-6 rounded-3xl border border-border">
         <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3">
-          Selecionar Parceria
+          {isOSCUser ? 'Minhas Parcerias' : 'Selecionar Parceria'}
         </label>
         <select
           value={selectedPartnershipId}
@@ -265,10 +271,16 @@ const AccountabilityModule: React.FC = () => {
           <option value="">Selecione uma parceria...</option>
           {partnerships.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.osc?.razao_social} - {p.numero_termo || "Sem número"}
+              {isOSCUser 
+                ? `${p.numero_termo || 'Sem número'} - ${p.public_call?.objeto || 'Objeto não definido'}`
+                : `${p.osc?.razao_social} - ${p.numero_termo || "Sem número"}`
+              }
             </option>
           ))}
         </select>
+        {isOSCUser && partnerships.length === 0 && !loadingPartnerships && (
+          <p className="text-xs text-muted-foreground mt-2">Você não possui parcerias ativas vinculadas à sua OSC.</p>
+        )}
       </div>
 
       {selectedPartnershipId && (

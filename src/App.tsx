@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, Users, FileSignature, ShieldCheck, Eye, Search, Menu, X, ClipboardList, Megaphone, Briefcase, History, Lock, BookOpen, MessageSquare, Scale, BarChartHorizontal, LogOut, Trophy, FilePlus2, HelpCircle, Link2, FolderOpen, Settings } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, FileSignature, ShieldCheck, Eye, Search, Menu, X, ClipboardList, Megaphone, Briefcase, History, Lock, BookOpen, MessageSquare, Scale, BarChartHorizontal, LogOut, Trophy, FilePlus2, HelpCircle, Link2, FolderOpen, Settings, Globe, LifeBuoy, Handshake, DollarSign, PieChart } from 'lucide-react';
 import { LabelProvider } from './contexts/LabelContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import CurrentDateTime from './components/CurrentDateTime';
@@ -30,11 +30,16 @@ import Auth from './pages/Auth';
 import { UserRole } from './types';
 import { AuthProvider, useAuth, getRoleEnum, isSuperAdmin } from './hooks/useAuth';
 import { getAccessibleRoutes } from './services/authContext';
+import { supabase } from './integrations/supabase/client';
 
-const SidebarItem = ({ to, icon: Icon, label, active, hidden }: { to: string, icon: any, label: string, active: boolean, hidden?: boolean }) => {
+const SidebarItem = ({ to, icon: Icon, label, active, hidden, onClick }: { to: string, icon: any, label: string, active: boolean, hidden?: boolean, onClick?: () => void }) => {
   if (hidden) return null;
   return (
-    <Link to={to} className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${active ? 'bg-sidebar-accent text-sidebar-foreground font-bold' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}`}>
+    <Link 
+      to={to} 
+      onClick={onClick}
+      className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${active ? 'bg-sidebar-accent text-sidebar-foreground font-bold' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}`}
+    >
       <Icon size={18} />
       <span className="text-sm">{label}</span>
     </Link>
@@ -78,10 +83,11 @@ const AccessDenied = () => (
 );
 
 const MainApp: React.FC = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { user, profile, signOut, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [oscName, setOscName] = useState<string | null>(null);
   
   // Get role from profile or default
   const currentRole = profile?.role ? getRoleEnum(profile.role) : UserRole.OSC_USER;
@@ -93,6 +99,24 @@ const MainApp: React.FC = () => {
 
   // Check if user is OSC
   const isOSCUser = currentRole === UserRole.OSC_LEGAL || currentRole === UserRole.OSC_USER;
+
+  // Fetch OSC name when user is OSC type
+  useEffect(() => {
+    const fetchOscName = async () => {
+      if (isOSCUser && profile?.osc_id) {
+        const { data, error } = await supabase
+          .from('oscs')
+          .select('razao_social')
+          .eq('id', profile.osc_id)
+          .maybeSingle();
+        
+        if (!error && data) {
+          setOscName(data.razao_social);
+        }
+      }
+    };
+    fetchOscName();
+  }, [isOSCUser, profile?.osc_id]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -129,6 +153,18 @@ const MainApp: React.FC = () => {
     }
   };
 
+  // OSC-specific menu items (exact order as requested)
+  const oscMenuItems = [
+    { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/my-documents', icon: FileText, label: 'Minha Documentação' },
+    { to: '/partnerships', icon: Handshake, label: 'Minhas Parcerias' },
+    { to: '/accountability', icon: PieChart, label: 'Prestação de Contas' },
+    { to: '/communication', icon: MessageSquare, label: 'Comunicação' },
+    { to: '/support', icon: LifeBuoy, label: 'Suporte' },
+    { to: '/manual', icon: BookOpen, label: 'Manual do Sistema' },
+    { to: '/transparency', icon: Globe, label: 'Portal Público' },
+  ];
+
   return (
     <div className="flex h-screen bg-background overflow-hidden font-sans">
       <aside className={`bg-sidebar text-sidebar-foreground w-72 transition-all duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed md:relative z-50 h-full border-r border-sidebar-border overflow-y-auto scrollbar-hide flex flex-col`}>
@@ -143,16 +179,21 @@ const MainApp: React.FC = () => {
           <button className="md:hidden text-sidebar-foreground" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button>
         </div>
 
-        {/* OSC-specific section */}
+        {/* OSC-specific menu - exact order as requested */}
         {isOSCUser && (
           <>
             <div className="px-4 py-4 text-[10px] font-bold text-sidebar-primary uppercase tracking-widest">Minha OSC</div>
-            <nav className="px-4 space-y-1" onClick={handleSidebarItemClick}>
-              <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" active={location.pathname === '/'} />
-              <SidebarItem to="/my-documents" icon={FolderOpen} label="Minha Documentação" active={location.pathname === '/my-documents'} />
-              <SidebarItem to="/partnerships" icon={FileSignature} label="Minhas Parcerias" active={location.pathname.startsWith('/partnerships')} />
-              <SidebarItem to="/accountability" icon={ClipboardList} label="Prestação de Contas" active={location.pathname === '/accountability'} />
-              <SidebarItem to="/communication" icon={MessageSquare} label="Comunicações" active={location.pathname === '/communication'} />
+            <nav className="px-4 space-y-1 flex-1">
+              {oscMenuItems.map((item) => (
+                <SidebarItem 
+                  key={item.to}
+                  to={item.to} 
+                  icon={item.icon} 
+                  label={item.label} 
+                  active={location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to))}
+                  onClick={handleSidebarItemClick}
+                />
+              ))}
             </nav>
           </>
         )}
@@ -161,44 +202,48 @@ const MainApp: React.FC = () => {
         {!isOSCUser && (
           <>
             <div className="px-4 py-4 text-[10px] font-bold text-sidebar-primary uppercase tracking-widest">Operacional</div>
-            <nav className="px-4 space-y-1" onClick={handleSidebarItemClick}>
-              <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" active={location.pathname === '/'} />
-              <SidebarItem to="/amendments" icon={FileText} label="Emendas Parlamentares" active={location.pathname === '/amendments'} hidden={!canAccess('/amendments')} />
-              <SidebarItem to="/pmis" icon={Briefcase} label="PMIS" active={location.pathname === '/pmis'} hidden={!canAccess('/pmis')} />
-              <SidebarItem to="/chamamento" icon={Megaphone} label="Chamamentos" active={location.pathname === '/chamamento'} hidden={!canAccess('/chamamento')} />
-              <SidebarItem to="/proposals" icon={Trophy} label="Seleção de Propostas" active={location.pathname === '/proposals'} hidden={!canAccess('/proposals')} />
-              <SidebarItem to="/partnerships" icon={FileSignature} label="Parcerias" active={location.pathname.startsWith('/partnerships')} hidden={!canAccess('/partnerships')} />
-              <SidebarItem to="/additives" icon={FilePlus2} label="Aditivos" active={location.pathname === '/additives'} hidden={!canAccess('/additives')} />
-              <SidebarItem to="/accountability" icon={ClipboardList} label="Contas (REO/REFF)" active={location.pathname === '/accountability'} hidden={!canAccess('/accountability')} />
+            <nav className="px-4 space-y-1">
+              <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" active={location.pathname === '/'} onClick={handleSidebarItemClick} />
+              <SidebarItem to="/amendments" icon={FileText} label="Emendas Parlamentares" active={location.pathname === '/amendments'} hidden={!canAccess('/amendments')} onClick={handleSidebarItemClick} />
+              <SidebarItem to="/pmis" icon={Briefcase} label="PMIS" active={location.pathname === '/pmis'} hidden={!canAccess('/pmis')} onClick={handleSidebarItemClick} />
+              <SidebarItem to="/chamamento" icon={Megaphone} label="Chamamentos" active={location.pathname === '/chamamento'} hidden={!canAccess('/chamamento')} onClick={handleSidebarItemClick} />
+              <SidebarItem to="/proposals" icon={Trophy} label="Seleção de Propostas" active={location.pathname === '/proposals'} hidden={!canAccess('/proposals')} onClick={handleSidebarItemClick} />
+              <SidebarItem to="/partnerships" icon={FileSignature} label="Parcerias" active={location.pathname.startsWith('/partnerships')} hidden={!canAccess('/partnerships')} onClick={handleSidebarItemClick} />
+              <SidebarItem to="/additives" icon={FilePlus2} label="Aditivos" active={location.pathname === '/additives'} hidden={!canAccess('/additives')} onClick={handleSidebarItemClick} />
+              <SidebarItem to="/accountability" icon={ClipboardList} label="Contas (REO/REFF)" active={location.pathname === '/accountability'} hidden={!canAccess('/accountability')} onClick={handleSidebarItemClick} />
             </nav>
 
             <div className="px-4 py-4 text-[10px] font-bold text-sidebar-primary uppercase tracking-widest mt-2 border-t border-sidebar-border pt-6">Gestão e Dados</div>
-            <nav className="px-4 space-y-1" onClick={handleSidebarItemClick}>
-              <SidebarItem to="/oscs" icon={Users} label="Cadastro OSCs" active={location.pathname === '/oscs'} hidden={!canAccess('/oscs')} />
-              <SidebarItem to="/reports" icon={BarChartHorizontal} label="Relatórios e BI" active={location.pathname === '/reports'} hidden={!canAccess('/reports')} />
-              <SidebarItem to="/legislation" icon={Scale} label="Legislação e Modelos" active={location.pathname === '/legislation'} hidden={!canAccess('/legislation')} />
-              <SidebarItem to="/communication" icon={MessageSquare} label="Comunicações" active={location.pathname === '/communication'} hidden={!canAccess('/communication')} />
+            <nav className="px-4 space-y-1">
+              <SidebarItem to="/oscs" icon={Users} label="Cadastro OSCs" active={location.pathname === '/oscs'} hidden={!canAccess('/oscs')} onClick={handleSidebarItemClick} />
+              <SidebarItem to="/reports" icon={BarChartHorizontal} label="Relatórios e BI" active={location.pathname === '/reports'} hidden={!canAccess('/reports')} onClick={handleSidebarItemClick} />
+              <SidebarItem to="/legislation" icon={Scale} label="Legislação e Modelos" active={location.pathname === '/legislation'} hidden={!canAccess('/legislation')} onClick={handleSidebarItemClick} />
+              <SidebarItem to="/communication" icon={MessageSquare} label="Comunicações" active={location.pathname === '/communication'} hidden={!canAccess('/communication')} onClick={handleSidebarItemClick} />
+            </nav>
+
+            <div className="px-4 py-4 text-[10px] font-bold text-sidebar-primary uppercase tracking-widest mt-2 border-t border-sidebar-border pt-6">Controle e Ajuda</div>
+            <nav className="px-4 space-y-1 flex-1">
+              <SidebarItem to="/logs" icon={History} label="Audit Trail (LGPD)" active={location.pathname === '/logs'} hidden={!canAccess('/logs')} onClick={handleSidebarItemClick} />
+              <SidebarItem to="/support" icon={HelpCircle} label="Suporte" active={location.pathname === '/support'} onClick={handleSidebarItemClick} />
+              <SidebarItem to="/integrations" icon={Link2} label="Integrações" active={location.pathname === '/integrations'} hidden={!canAccess('/integrations')} onClick={handleSidebarItemClick} />
+              <SidebarItem to="/admin-settings" icon={Settings} label="Configurações" active={location.pathname === '/admin-settings'} hidden={!isMasterUser} onClick={handleSidebarItemClick} />
+              <SidebarItem to="/manual" icon={BookOpen} label="Manual do Sistema" active={location.pathname === '/manual'} onClick={handleSidebarItemClick} />
+              <SidebarItem to="/transparency" icon={Eye} label="Portal Público" active={false} onClick={handleSidebarItemClick} />
             </nav>
           </>
         )}
 
-        <div className="px-4 py-4 text-[10px] font-bold text-sidebar-primary uppercase tracking-widest mt-2 border-t border-sidebar-border pt-6">Controle e Ajuda</div>
-        <nav className="px-4 space-y-1 flex-1" onClick={handleSidebarItemClick}>
-          <SidebarItem to="/logs" icon={History} label="Audit Trail (LGPD)" active={location.pathname === '/logs'} hidden={!canAccess('/logs')} />
-          <SidebarItem to="/support" icon={HelpCircle} label="Suporte" active={location.pathname === '/support'} />
-          <SidebarItem to="/integrations" icon={Link2} label="Integrações" active={location.pathname === '/integrations'} hidden={!canAccess('/integrations')} />
-          <SidebarItem to="/admin-settings" icon={Settings} label="Configurações" active={location.pathname === '/admin-settings'} hidden={!isMasterUser} />
-          <SidebarItem to="/manual" icon={BookOpen} label="Manual do Sistema" active={location.pathname === '/manual'} />
-          <SidebarItem to="/transparency" icon={Eye} label="Portal Público" active={false} />
-        </nav>
-
-        {/* User Profile in Footer */}
+        {/* User Profile in Footer - Shows OSC name for OSC users */}
         <div className="mt-auto p-4 bg-sidebar-accent border-t border-sidebar-border">
           <div className="flex items-center space-x-3">
             <div className="w-9 h-9 rounded-xl bg-sidebar-primary flex items-center justify-center font-bold text-sm text-sidebar-primary-foreground uppercase">{currentUser.name.substring(0,2)}</div>
             <div className="overflow-hidden flex-1">
               <p className="font-semibold text-sidebar-foreground text-xs truncate">{currentUser.name}</p>
-              <p className="text-sidebar-primary text-[10px] uppercase font-bold tracking-tight truncate">{currentUser.role}</p>
+              {isOSCUser && oscName ? (
+                <p className="text-sidebar-primary text-[10px] font-bold tracking-tight truncate" title={oscName}>{oscName}</p>
+              ) : (
+                <p className="text-sidebar-primary text-[10px] uppercase font-bold tracking-tight truncate">{currentUser.role}</p>
+              )}
             </div>
             <button 
               onClick={handleSignOut} 

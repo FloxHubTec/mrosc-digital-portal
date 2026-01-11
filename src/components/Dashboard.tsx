@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Activity,
   FileText,
@@ -17,6 +17,8 @@ import {
   DollarSign,
   Scale,
   X,
+  FileSignature,
+  CalendarClock,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -36,8 +38,11 @@ import { UserRole } from "../types";
 import ExportDropdown from "./ui/ExportDropdown";
 import { exportData, ExportFormat } from "@/utils/exportUtils";
 import { toast } from "sonner";
+import { usePartnerships } from "@/hooks/usePartnerships";
+import { useAuth } from "@/hooks/useAuth";
 
-const data = [
+// Mock data for global charts (admin view)
+const globalData = [
   { name: "Jan", valor: 420000 },
   { name: "Fev", valor: 380000 },
   { name: "Mar", valor: 510000 },
@@ -47,14 +52,14 @@ const data = [
 ];
 
 const COLORS_PIE = ["#0f766e", "#0d9488", "#f59e0b", "#ef4444"];
-const pieData = [
+const globalPieData = [
   { name: "Em Execução", value: 45 },
   { name: "Celebradas", value: 25 },
   { name: "Contas em Análise", value: 20 },
   { name: "Prazos Vencidos", value: 10 },
 ];
 
-// Dados mock de alertas críticos
+// Dados mock de alertas críticos (admin view)
 const criticalAlerts = [
   { id: '1', title: 'Prestação de Contas Vencida', entity: 'OSC Vida Nova', deadline: '05/01/2026', type: 'contas' },
   { id: '2', title: 'CND Federal Expirada', entity: 'Assoc. Verde Cidade', deadline: '02/01/2026', type: 'certidao' },
@@ -111,7 +116,74 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const navigate = useNavigate();
   const [showAlerts, setShowAlerts] = useState(false);
+  const { profile } = useAuth();
   const isOSC = user.role === UserRole.OSC_LEGAL || user.role === UserRole.OSC_USER;
+  
+  // For OSC users, fetch their own partnerships data
+  const { partnerships, loading: loadingPartnerships } = usePartnerships(isOSC);
+  
+  // Calculate OSC-specific stats
+  const oscStats = React.useMemo(() => {
+    if (!isOSC || loadingPartnerships) return null;
+    
+    const activePartnerships = partnerships.filter(p => p.status === 'ativa' || p.status === 'em_execucao');
+    const totalReceived = partnerships.reduce((sum, p) => sum + (p.valor_repassado || 0), 0);
+    const pendingAccounts = partnerships.filter(p => p.status === 'pendente_contas').length;
+    
+    // Calculate expiring partnerships (vigencia_fim within 30 days)
+    const today = new Date();
+    const expiringPartnerships = partnerships.filter(p => {
+      if (!p.vigencia_fim) return false;
+      const endDate = new Date(p.vigencia_fim);
+      const daysUntilEnd = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return daysUntilEnd >= 0 && daysUntilEnd <= 30;
+    });
+    
+    return {
+      totalPartnerships: partnerships.length,
+      activePartnerships: activePartnerships.length,
+      totalReceived,
+      pendingAccounts,
+      expiringCount: expiringPartnerships.length,
+    };
+  }, [isOSC, partnerships, loadingPartnerships]);
+  
+  // Generate OSC-specific chart data
+  const oscChartData = React.useMemo(() => {
+    if (!isOSC || !partnerships.length) return [];
+    
+    // Group by month (simplified - using created_at)
+    const monthlyData: { [key: string]: number } = {};
+    partnerships.forEach(p => {
+      if (p.valor_repassado) {
+        const date = new Date(p.created_at);
+        const monthKey = date.toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
+        monthlyData[monthKey] = (monthlyData[monthKey] || 0) + p.valor_repassado;
+      }
+    });
+    
+    return Object.entries(monthlyData).map(([name, valor]) => ({ name, valor }));
+  }, [isOSC, partnerships]);
+  
+  // OSC-specific pie data (status distribution)
+  const oscPieData = React.useMemo(() => {
+    if (!isOSC || !partnerships.length) return globalPieData;
+    
+    const statusCount: { [key: string]: number } = {};
+    partnerships.forEach(p => {
+      const status = p.status || 'Outros';
+      statusCount[status] = (statusCount[status] || 0) + 1;
+    });
+    
+    return Object.entries(statusCount).map(([name, value]) => ({ 
+      name: name === 'ativa' ? 'Em Execução' : name === 'celebrada' ? 'Celebradas' : name, 
+      value 
+    }));
+  }, [isOSC, partnerships]);
+  
+  // Use appropriate data based on user type
+  const chartData = isOSC ? (oscChartData.length > 0 ? oscChartData : [{ name: 'N/A', valor: 0 }]) : globalData;
+  const pieData = isOSC ? oscPieData : globalPieData;
 
   const handleExportSICOM = (format: ExportFormat) => {
     const headers = ['Mês', 'Valor Repassado', 'Parcerias Ativas', 'Metas Cumpridas'];
@@ -170,36 +242,74 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-        <StatCard
-          title="Parcerias Ativas"
-          value={isOSC ? "02" : "114"}
-          icon={Activity}
-          color="teal"
-          trend={{ value: 8, positive: true }}
-          onClick={() => navigate('/partnerships')}
-        />
-        <StatCard 
-          title="Emendas Alocadas" 
-          value="R$ 1.8M" 
-          icon={DollarSign} 
-          color="indigo" 
-          onClick={() => navigate('/amendments')}
-        />
-        <StatCard 
-          title="Chamamentos" 
-          value="05" 
-          icon={Megaphone} 
-          color="blue" 
-          onClick={() => navigate('/chamamento')}
-        />
-        <StatCard 
-          title="Alertas Críticos" 
-          value="03" 
-          icon={AlertTriangle} 
-          color="amber" 
-          pulse={true} 
-          onClick={() => setShowAlerts(true)}
-        />
+        {isOSC ? (
+          // OSC-specific cards with their own data
+          <>
+            <StatCard
+              title="Minhas Parcerias"
+              value={loadingPartnerships ? "..." : String(oscStats?.totalPartnerships || 0).padStart(2, '0')}
+              icon={FileSignature}
+              color="teal"
+              onClick={() => navigate('/partnerships')}
+            />
+            <StatCard 
+              title="Total Recebido" 
+              value={loadingPartnerships ? "..." : `R$ ${((oscStats?.totalReceived || 0) / 1000).toFixed(0)}K`}
+              icon={DollarSign} 
+              color="indigo" 
+              onClick={() => navigate('/accountability')}
+            />
+            <StatCard 
+              title="Contas Pendentes" 
+              value={loadingPartnerships ? "..." : String(oscStats?.pendingAccounts || 0).padStart(2, '0')}
+              icon={Clock} 
+              color="blue" 
+              onClick={() => navigate('/accountability')}
+            />
+            <StatCard 
+              title="Prazos Vencendo" 
+              value={loadingPartnerships ? "..." : String(oscStats?.expiringCount || 0).padStart(2, '0')}
+              icon={CalendarClock} 
+              color="amber" 
+              pulse={oscStats?.expiringCount ? oscStats.expiringCount > 0 : false}
+              onClick={() => navigate('/partnerships')}
+            />
+          </>
+        ) : (
+          // Admin/Staff cards with global data
+          <>
+            <StatCard
+              title="Parcerias Ativas"
+              value="114"
+              icon={Activity}
+              color="teal"
+              trend={{ value: 8, positive: true }}
+              onClick={() => navigate('/partnerships')}
+            />
+            <StatCard 
+              title="Emendas Alocadas" 
+              value="R$ 1.8M" 
+              icon={DollarSign} 
+              color="indigo" 
+              onClick={() => navigate('/amendments')}
+            />
+            <StatCard 
+              title="Chamamentos" 
+              value="05" 
+              icon={Megaphone} 
+              color="blue" 
+              onClick={() => navigate('/chamamento')}
+            />
+            <StatCard 
+              title="Alertas Críticos" 
+              value="03" 
+              icon={AlertTriangle} 
+              color="amber" 
+              pulse={true} 
+              onClick={() => setShowAlerts(true)}
+            />
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -208,10 +318,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             <div>
               <h3 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-3 italic">
                 <TrendingUp className="text-primary" size={28} />
-                Repasses x Metas
+                {isOSC ? "Meus Repasses" : "Repasses x Metas"}
               </h3>
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-2">
-                Fluxo de Desembolso Financeiro MROSC
+                {isOSC ? "Histórico de Repasses Recebidos" : "Fluxo de Desembolso Financeiro MROSC"}
               </p>
             </div>
             <div className="flex gap-2">
@@ -220,37 +330,43 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             </div>
           </div>
           <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))", fontWeight: 700 }}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))", fontWeight: 700 }}
-                />
-                <Tooltip
-                  cursor={{ fill: "hsl(var(--muted))" }}
-                  contentStyle={{
-                    borderRadius: "24px",
-                    border: "none",
-                    boxShadow: "0 25px 50px -12px rgb(0 0 0 / 0.2)",
-                  }}
-                />
-                <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[12, 12, 0, 0]} barSize={45} />
-              </BarChart>
-            </ResponsiveContainer>
+            {loadingPartnerships && isOSC ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))", fontWeight: 700 }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))", fontWeight: 700 }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "hsl(var(--muted))" }}
+                    contentStyle={{
+                      borderRadius: "24px",
+                      border: "none",
+                      boxShadow: "0 25px 50px -12px rgb(0 0 0 / 0.2)",
+                    }}
+                  />
+                  <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[12, 12, 0, 0]} barSize={45} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
         <div className="bg-card p-12 rounded-[4rem] shadow-sm border border-border flex flex-col items-center justify-center">
           <h3 className="text-xl font-black text-foreground tracking-tight mb-10 self-start italic">
-            Status de Contas
+            {isOSC ? "Minhas Parcerias" : "Status de Contas"}
           </h3>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
