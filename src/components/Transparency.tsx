@@ -23,8 +23,10 @@ import {
   Trophy,
   Award,
   Medal,
+  LogIn,
+  ClipboardEdit,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -37,6 +39,11 @@ import { usePublicCalls, PublicCall } from "@/hooks/usePublicCalls";
 import { useProposals, Proposal } from "@/hooks/useProposals";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Interface para as fotos
 interface FotoEvidencia {
@@ -289,8 +296,10 @@ const mockLegislacao = [
 
 const TransparencyPortal: React.FC = () => {
   const { theme } = useTheme();
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const { publicCalls, loading: loadingCalls } = usePublicCalls();
-  const { proposals, loading: loadingProposals } = useProposals();
+  const { proposals, loading: loadingProposals, createProposal } = useProposals();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterYear, setFilterYear] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
@@ -300,6 +309,92 @@ const TransparencyPortal: React.FC = () => {
   const [showOuvidoria, setShowOuvidoria] = useState(false);
   const [ouvidoriaForm, setOuvidoriaForm] = useState({ tipo: 'denuncia', relato: '', anexo: null as File | null });
   const [sendingOuvidoria, setSendingOuvidoria] = useState(false);
+  
+  // Proposal submission state
+  const [showProposalModal, setShowProposalModal] = useState(false);
+  const [selectedCallForProposal, setSelectedCallForProposal] = useState<PublicCall | null>(null);
+  const [proposalForm, setProposalForm] = useState({
+    titulo: '',
+    descricao: '',
+    valor_solicitado: '',
+  });
+  const [submittingProposal, setSubmittingProposal] = useState(false);
+
+  // Check if user is OSC
+  const isOSCUser = profile?.role === 'osc_user' || profile?.role === 'Usuário OSC' || profile?.role === 'Representante Legal OSC';
+  const canSubmitProposal = user && isOSCUser && profile?.osc_id;
+
+  // Handle proposal submission
+  const handleSubmitProposal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedCallForProposal || !profile?.osc_id) return;
+    
+    setSubmittingProposal(true);
+    
+    try {
+      const result = await createProposal({
+        public_call_id: selectedCallForProposal.id,
+        osc_id: profile.osc_id,
+        titulo: proposalForm.titulo,
+        descricao: proposalForm.descricao,
+        valor_solicitado: proposalForm.valor_solicitado ? parseFloat(proposalForm.valor_solicitado) : undefined,
+      });
+      
+      if (result) {
+        toast({
+          title: "Proposta inscrita com sucesso!",
+          description: `Sua proposta para o ${selectedCallForProposal.numero_edital} foi registrada. Acompanhe o andamento em 'Minhas Parcerias'.`,
+        });
+        setShowProposalModal(false);
+        setProposalForm({ titulo: '', descricao: '', valor_solicitado: '' });
+        setSelectedCallForProposal(null);
+      }
+    } catch (error) {
+      console.error('Error submitting proposal:', error);
+      toast({
+        title: "Erro ao inscrever proposta",
+        description: "Ocorreu um erro. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmittingProposal(false);
+    }
+  };
+
+  // Open proposal modal for a specific call
+  const handleOpenProposalModal = (call: PublicCall) => {
+    if (!user) {
+      // Redirect to login with return URL
+      toast({
+        title: "Login necessário",
+        description: "Faça login como OSC para inscrever uma proposta.",
+      });
+      navigate('/auth');
+      return;
+    }
+    
+    if (!isOSCUser) {
+      toast({
+        title: "Acesso restrito",
+        description: "Apenas usuários de OSC podem inscrever propostas.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!profile?.osc_id) {
+      toast({
+        title: "OSC não vinculada",
+        description: "Seu perfil não está vinculado a uma OSC. Contate o administrador.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setSelectedCallForProposal(call);
+    setShowProposalModal(true);
+  };
 
   // Available years for filter
   const availableYears = useMemo(() => {
@@ -1243,26 +1338,149 @@ const TransparencyPortal: React.FC = () => {
                 </ul>
               </div>
 
-              {/* Download Edital Button */}
-              {selectedPublicCall.pdf_url && (
-                <a
-                  href={selectedPublicCall.pdf_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-4 bg-success/10 text-success border border-success/30 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-success hover:text-white transition-all"
-                >
-                  <Download size={16} />
-                  Baixar Edital Completo (PDF)
-                </a>
-              )}
+              {/* Inscription / Download Buttons */}
+              <div className="flex flex-col gap-3">
+                {/* Inscription button - only show for open calls */}
+                {selectedPublicCall.status === 'aberto' && (
+                  <Button 
+                    onClick={() => {
+                      handleOpenProposalModal(selectedPublicCall);
+                      setSelectedPublicCall(null);
+                    }}
+                    className="w-full gap-2 bg-success hover:bg-success/90 text-white"
+                  >
+                    <ClipboardEdit size={16} />
+                    Inscrever Proposta neste Chamamento
+                  </Button>
+                )}
+                
+                {/* Download Edital Button */}
+                {selectedPublicCall.pdf_url && (
+                  <a
+                    href={selectedPublicCall.pdf_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-4 bg-primary/10 text-primary border border-primary/30 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-primary hover:text-white transition-all"
+                  >
+                    <Download size={16} />
+                    Baixar Edital Completo (PDF)
+                  </a>
+                )}
+              </div>
 
               <Button 
+                variant="outline"
                 onClick={() => setSelectedPublicCall(null)}
                 className="w-full"
               >
                 Fechar
               </Button>
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Proposal Submission Modal */}
+      <Dialog open={showProposalModal} onOpenChange={setShowProposalModal}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black flex items-center gap-2">
+              <ClipboardEdit className="text-primary" />
+              Inscrever Proposta
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedCallForProposal && (
+            <form onSubmit={handleSubmitProposal} className="space-y-5 mt-4">
+              <Alert>
+                <AlertDescription className="text-sm">
+                  <strong>Chamamento:</strong> {selectedCallForProposal.numero_edital}<br />
+                  <strong>Objeto:</strong> {selectedCallForProposal.objeto}
+                </AlertDescription>
+              </Alert>
+              
+              <div>
+                <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                  Título da Proposta *
+                </Label>
+                <Input
+                  value={proposalForm.titulo}
+                  onChange={(e) => setProposalForm({ ...proposalForm, titulo: e.target.value })}
+                  placeholder="Ex: Projeto Educação para Todos"
+                  required
+                  className="mt-2"
+                />
+              </div>
+              
+              <div>
+                <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                  Descrição da Proposta *
+                </Label>
+                <Textarea
+                  value={proposalForm.descricao}
+                  onChange={(e) => setProposalForm({ ...proposalForm, descricao: e.target.value })}
+                  placeholder="Descreva os objetivos, metodologia e resultados esperados..."
+                  required
+                  rows={5}
+                  className="mt-2"
+                />
+              </div>
+              
+              <div>
+                <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                  Valor Solicitado (R$)
+                </Label>
+                <Input
+                  type="number"
+                  value={proposalForm.valor_solicitado}
+                  onChange={(e) => setProposalForm({ ...proposalForm, valor_solicitado: e.target.value })}
+                  placeholder="Ex: 150000"
+                  className="mt-2"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Valor máximo disponível: {selectedCallForProposal.valor_total ? 
+                    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedCallForProposal.valor_total) 
+                    : 'Não especificado'}
+                </p>
+              </div>
+              
+              <div className="bg-muted/50 p-4 rounded-xl text-sm text-muted-foreground">
+                <p className="font-bold text-foreground mb-2">Próximos passos:</p>
+                <ul className="space-y-1 list-disc list-inside">
+                  <li>Sua proposta será registrada como "Inscrita"</li>
+                  <li>A comissão de seleção avaliará todas as propostas</li>
+                  <li>Acompanhe o andamento em "Minhas Parcerias"</li>
+                </ul>
+              </div>
+              
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowProposalModal(false)}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={submittingProposal || !proposalForm.titulo || !proposalForm.descricao}
+                  className="flex-1 gap-2"
+                >
+                  {submittingProposal ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Inscrevendo...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={16} />
+                      Inscrever Proposta
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
           )}
         </DialogContent>
       </Dialog>
