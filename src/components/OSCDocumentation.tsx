@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,14 +12,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Upload, FileText, AlertTriangle, CheckCircle, Clock, 
   Building2, CreditCard, MapPin, FileCheck, Trash2, 
-  Eye, Download, Calendar, RefreshCw, AlertCircle
+  Eye, Download, Calendar, RefreshCw, AlertCircle, ImageIcon, Palette, Save
 } from 'lucide-react';
 import { format, differenceInDays, parseISO, isAfter, isBefore, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
+import { useOSCs } from '@/hooks/useOSCs';
 // Document types configuration
 const DOCUMENT_TYPES = [
   { 
@@ -250,6 +250,7 @@ const mockBankData: BankData = {
 
 const OSCDocumentation: React.FC = () => {
   const { profile } = useAuth();
+  const { oscs, updateOSC } = useOSCs();
   const [documents, setDocuments] = useState<OSCDocument[]>(mockDocuments);
   const [bankData, setBankData] = useState<BankData>(mockBankData);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -260,6 +261,117 @@ const OSCDocumentation: React.FC = () => {
   const [expiryDate, setExpiryDate] = useState('');
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  
+  // Branding/Identity state
+  const [showBrandingModal, setShowBrandingModal] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [brandingForm, setBrandingForm] = useState({
+    razao_social: '',
+    nome_fantasia: '',
+  });
+  
+  // Get current OSC data
+  const currentOSC = oscs.find(o => o.id === profile?.osc_id);
+  
+  // Initialize branding form with current OSC data
+  useEffect(() => {
+    if (currentOSC) {
+      setBrandingForm({
+        razao_social: currentOSC.razao_social || '',
+        nome_fantasia: '',
+      });
+      if (currentOSC.logo_url) {
+        setLogoPreview(currentOSC.logo_url);
+      }
+    }
+  }, [currentOSC]);
+  
+  // Handle logo file selection
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Por favor, selecione um arquivo de imagem (JPG, PNG, etc.)');
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        toast.error('O arquivo deve ter no máximo 2MB');
+        return;
+      }
+      setLogoFile(file);
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  // Handle branding save
+  const handleSaveBranding = async () => {
+    if (!profile?.osc_id) {
+      toast.error('OSC não identificada');
+      return;
+    }
+    
+    setUploadingLogo(true);
+    
+    try {
+      let logoUrl = currentOSC?.logo_url || null;
+      
+      // Upload logo if new file selected
+      if (logoFile) {
+        const fileExt = logoFile.name.split('.').pop();
+        const fileName = `${profile.osc_id}/logo.${fileExt}`;
+        
+        // Delete old logo if exists
+        if (currentOSC?.logo_url) {
+          const oldPath = currentOSC.logo_url.split('/osc-logos/')[1];
+          if (oldPath) {
+            await supabase.storage.from('osc-logos').remove([oldPath]);
+          }
+        }
+        
+        // Upload new logo
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('osc-logos')
+          .upload(fileName, logoFile, { upsert: true });
+        
+        if (uploadError) {
+          throw uploadError;
+        }
+        
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('osc-logos')
+          .getPublicUrl(fileName);
+        
+        logoUrl = urlData.publicUrl;
+      }
+      
+      // Update OSC record
+      const { error: updateError } = await updateOSC(profile.osc_id, {
+        logo_url: logoUrl,
+        razao_social: brandingForm.razao_social,
+      });
+      
+      if (updateError) {
+        throw updateError;
+      }
+      
+      toast.success('Identidade visual atualizada com sucesso!');
+      setShowBrandingModal(false);
+      setLogoFile(null);
+    } catch (error: any) {
+      console.error('Error saving branding:', error);
+      toast.error('Erro ao salvar identidade visual: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   // Calculate document status based on expiry date
   const getDocumentStatus = (doc: OSCDocument): 'valid' | 'expiring' | 'expired' | 'pending' => {
@@ -417,7 +529,105 @@ const OSCDocumentation: React.FC = () => {
             Gerencie os documentos da sua organização. O sistema monitora automaticamente os vencimentos.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {/* Branding/Identity Button */}
+          <Dialog open={showBrandingModal} onOpenChange={setShowBrandingModal}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Palette size={16} />
+                Identidade Visual
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Palette size={20} />
+                  Identidade Visual da Instituição
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-6 mt-4">
+                <Alert>
+                  <ImageIcon className="h-4 w-4" />
+                  <AlertDescription>
+                    Configure a logo e o nome da sua organização. Essas informações serão usadas nos documentos, relatórios e formulários gerados pelo sistema.
+                  </AlertDescription>
+                </Alert>
+                
+                {/* Logo Upload */}
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Logo da Organização</Label>
+                  <div className="flex items-center gap-4">
+                    {/* Logo Preview */}
+                    <div className="w-24 h-24 border-2 border-dashed rounded-xl flex items-center justify-center bg-muted/50 overflow-hidden">
+                      {logoPreview ? (
+                        <img 
+                          src={logoPreview} 
+                          alt="Logo preview" 
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <div className="text-center">
+                          <ImageIcon className="mx-auto text-muted-foreground" size={28} />
+                          <p className="text-xs text-muted-foreground mt-1">Sem logo</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <Input 
+                        type="file" 
+                        accept="image/png,image/jpeg,image/jpg,image/webp"
+                        onChange={handleLogoFileChange}
+                        className="text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Formatos aceitos: PNG, JPG, WEBP. Máximo 2MB. Recomendado: 200x200px.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Organization Name */}
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold">Razão Social</Label>
+                  <Input 
+                    value={brandingForm.razao_social}
+                    onChange={e => setBrandingForm({...brandingForm, razao_social: e.target.value})}
+                    placeholder="Nome completo da organização"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Este nome aparecerá nos cabeçalhos dos documentos oficiais.
+                  </p>
+                </div>
+                
+                {/* Info about municipal branding */}
+                <Alert>
+                  <Building2 className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Importante:</strong> O brasão do Município sempre aparecerá nos documentos oficiais, conforme exigência legal. A logo da sua organização será exibida ao lado.
+                  </AlertDescription>
+                </Alert>
+                
+                <Button 
+                  onClick={handleSaveBranding} 
+                  disabled={uploadingLogo}
+                  className="w-full gap-2"
+                >
+                  {uploadingLogo ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} />
+                      Salvar Identidade Visual
+                    </>
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          
           <Dialog open={showBankModal} onOpenChange={setShowBankModal}>
             <DialogTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -672,6 +882,61 @@ const OSCDocumentation: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Identity/Branding Card */}
+      <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-primary/10 rounded-xl">
+                <Palette className="text-primary" size={20} />
+              </div>
+              <div>
+                <CardTitle className="text-base">Identidade Visual</CardTitle>
+                <CardDescription className="text-xs">
+                  Logo e dados para documentos oficiais
+                </CardDescription>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => setShowBrandingModal(true)}
+            >
+              <Palette size={14} />
+              Configurar
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            {/* Logo Display */}
+            <div className="w-16 h-16 border-2 border-dashed rounded-xl flex items-center justify-center bg-background overflow-hidden">
+              {currentOSC?.logo_url ? (
+                <img 
+                  src={currentOSC.logo_url} 
+                  alt="Logo da OSC" 
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <div className="text-center">
+                  <ImageIcon className="mx-auto text-muted-foreground" size={20} />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Sem logo</p>
+                </div>
+              )}
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-sm">{currentOSC?.razao_social || 'Nome não configurado'}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {currentOSC?.logo_url 
+                  ? '✓ Logo configurada' 
+                  : '⚠ Clique em "Configurar" para adicionar sua logo'}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Missing Documents */}
       {missingDocuments.length > 0 && (
