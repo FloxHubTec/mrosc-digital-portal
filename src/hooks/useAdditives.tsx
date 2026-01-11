@@ -21,7 +21,7 @@ export interface Additive {
   // Joined data
   partnership?: {
     numero_termo: string;
-    osc: { razao_social: string };
+    osc: { razao_social: string; logo_url: string | null };
   };
 }
 
@@ -37,7 +37,7 @@ export const useAdditives = (partnershipId?: string) => {
         .from('additives')
         .select(`
           *,
-          partnership:partnerships(numero_termo, osc:oscs(razao_social))
+          partnership:partnerships(numero_termo, osc:oscs(razao_social, logo_url))
         `)
         .order('created_at', { ascending: false });
 

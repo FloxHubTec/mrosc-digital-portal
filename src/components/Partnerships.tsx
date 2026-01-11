@@ -9,6 +9,8 @@ import { UserRole } from '@/types';
 import WorkPlanEditor from './WorkPlanEditor';
 import jsPDF from 'jspdf';
 import { Input } from '@/components/ui/input';
+import { generatePDFHeader, addPDFFooter } from '@/utils/pdfHeaderUtils';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const StatusBadge = ({ status }: { status: string | null }) => {
   const styles: Record<string, string> = {
@@ -34,6 +36,7 @@ const StatusBadge = ({ status }: { status: string | null }) => {
 
 const PartnershipsModule: React.FC = () => {
   const { profile } = useAuth();
+  const { theme } = useTheme();
   
   // Check if user is government staff (gestor)
   const currentRole = profile?.role ? getRoleEnum(profile.role) : UserRole.OSC_USER;
@@ -162,24 +165,32 @@ const PartnershipsModule: React.FC = () => {
     setShowEditModal(true);
   };
 
-  const handleDownloadInstrument = () => {
+  const handleDownloadInstrument = async () => {
     if (!selectedPartnership) return;
     
     const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text('TERMO DE FOMENTO / COLABORAÇÃO', 105, 20, { align: 'center' });
-    doc.setFontSize(12);
-    doc.text(`Nº: ${selectedPartnership.numero_termo || 'A DEFINIR'}`, 105, 30, { align: 'center' });
-    doc.line(20, 35, 190, 35);
+    
+    const { startY } = await generatePDFHeader({
+      doc,
+      municipalLogoUrl: theme.logoUrl || null,
+      oscLogoUrl: selectedPartnership.osc?.logo_url || null,
+      municipalName: theme.organizationName,
+      municipalSubtitle: theme.organizationSubtitle,
+      oscName: selectedPartnership.osc?.razao_social,
+      title: 'Termo de Fomento / Colaboração',
+      subtitle: `Nº: ${selectedPartnership.numero_termo || 'A DEFINIR'}`,
+    });
     
     doc.setFontSize(10);
-    let y = 50;
+    let y = startY + 4;
     doc.text(`OSC: ${selectedPartnership.osc?.razao_social || 'N/A'}`, 20, y);
     doc.text(`CNPJ: ${selectedPartnership.osc?.cnpj || 'N/A'}`, 20, y + 8);
     doc.text(`Origem: ${selectedPartnership.tipo_origem === 'chamamento' ? 'Chamamento Público' : selectedPartnership.tipo_origem === 'emenda' ? 'Emenda Parlamentar' : 'Dispensa de Chamamento'}`, 20, y + 16);
     doc.text(`Valor: R$ ${(selectedPartnership.valor_repassado || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, y + 24);
     doc.text(`Vigência: ${selectedPartnership.vigencia_inicio ? new Date(selectedPartnership.vigencia_inicio).toLocaleDateString('pt-BR') : 'N/A'} até ${selectedPartnership.vigencia_fim ? new Date(selectedPartnership.vigencia_fim).toLocaleDateString('pt-BR') : 'N/A'}`, 20, y + 32);
     doc.text(`Status: ${selectedPartnership.status || 'N/A'}`, 20, y + 40);
+    
+    addPDFFooter(doc, `Sistema MROSC - ${theme.organizationName}`);
     
     doc.save(`instrumento_${selectedPartnership.numero_termo || 'parceria'}.pdf`);
     toast({ title: "Download iniciado!", description: "Instrumento gerado em PDF." });

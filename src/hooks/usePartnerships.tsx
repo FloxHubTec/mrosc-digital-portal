@@ -18,6 +18,7 @@ export interface Partnership {
   osc?: {
     razao_social: string;
     cnpj: string;
+    logo_url: string | null;
   };
   public_call?: {
     numero_edital: string;
@@ -39,7 +40,7 @@ export function usePartnerships(filterByUserOsc: boolean = false) {
       .from('partnerships')
       .select(`
         *,
-        osc:oscs(razao_social, cnpj),
+        osc:oscs(razao_social, cnpj, logo_url),
         public_call:public_calls(numero_edital, objeto)
       `)
       .is('deleted_at', null)
@@ -81,7 +82,7 @@ export function usePartnerships(filterByUserOsc: boolean = false) {
       .insert([partnership])
       .select(`
         *,
-        osc:oscs(razao_social, cnpj),
+        osc:oscs(razao_social, cnpj, logo_url),
         public_call:public_calls(numero_edital, objeto)
       `)
       .single();
@@ -102,7 +103,7 @@ export function usePartnerships(filterByUserOsc: boolean = false) {
       .eq('id', id)
       .select(`
         *,
-        osc:oscs(razao_social, cnpj),
+        osc:oscs(razao_social, cnpj, logo_url),
         public_call:public_calls(numero_edital, objeto)
       `)
       .single();
