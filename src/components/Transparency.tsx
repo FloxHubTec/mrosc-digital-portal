@@ -365,12 +365,12 @@ const TransparencyPortal: React.FC = () => {
   // Open proposal modal for a specific call
   const handleOpenProposalModal = (call: PublicCall) => {
     if (!user) {
-      // Redirect to login with return URL
+      // Redirect to login with state indicating origin
       toast({
         title: "Login necessário",
         description: "Faça login como OSC para inscrever uma proposta.",
       });
-      navigate('/auth');
+      navigate('/auth', { state: { fromTransparency: true } });
       return;
     }
     
